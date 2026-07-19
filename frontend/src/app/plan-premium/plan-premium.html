@@ -1,0 +1,36 @@
+<div class="plans-container">
+  <h1>Planes de Suscripción</h1>
+
+  <div class="plans-grid">
+    <p-card>
+      <h3>Plan Básico</h3>
+      <p>$0/mes</p>
+      <ul>
+        <li>10 traducciones/mes</li>
+        <li>Idiomas básicos</li>
+        <li>Soporte por email</li>
+      </ul>
+      <p-button label="Seleccionar" severity="secondary" styleClass="seleccionar1-btn"/>
+    </p-card>
+
+    <p-card>
+      <h3>Plan Pro</h3>
+      <p>$29/mes</p>
+      <ul>
+        <li>Modelos avanzados</li>
+        <li>Traducciones ilimitadas</li>
+        <li>Todos los idiomas</li>
+        <li>Traduccion bilateral</li>
+        <li>Transcripciones con inteligencia artificial</li>
+        <li>Soporte prioritario</li>
+        
+        
+      </ul>
+      <p-button label="Seleccionar" styleClass="seleccionar-btn" />
+    </p-card>
+
+    
+  </div>
+
+  <p-button label="Volver" severity="secondary" [text]="true" (onClick)="volver()" styleClass="volver-btn" />
+</div>

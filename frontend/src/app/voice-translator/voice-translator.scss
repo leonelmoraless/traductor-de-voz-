@@ -1,0 +1,242 @@
+.translator-wrapper {
+  min-height: 100vh;
+  padding: 0 24px 40px;
+  background: #f8f9fa;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* ─── SUBHEADER ──────────────────────────────────────────────────────────── */
+.translator-subheader {
+  padding: 10px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-subtitle {
+  font-size: 0.82rem;
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ─── LANGUAGE BAR ───────────────────────────────────────────────────────── */
+.language-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+::ng-deep .lang-select { min-width: 160px; }
+
+/* ─── MIC SECTION ────────────────────────────────────────────────────────── */
+.mic-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 36px;
+}
+
+::ng-deep .mic-btn.p-button {
+  width: 80px !important;
+  height: 80px !important;
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  will-change: transform, box-shadow;
+
+  &:hover:not(:disabled) { transform: scale(1.06); }
+  &:active:not(:disabled) { transform: scale(0.97); }
+}
+
+::ng-deep .mic-btn .p-button-icon { font-size: 1.8rem !important; }
+
+.mic-main-label {
+  margin: 4px 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #475569;
+  transition: color 0.2s ease;
+}
+
+.recording-label {
+  color: #ef4444;
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+.mic-sub-label {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Pulso rojo cuando graba */
+::ng-deep .listening-pulse.p-button {
+  animation: pulse 1.6s ease-out infinite;
+}
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0    rgba(239, 68, 68, 0.5); }
+  70%  { box-shadow: 0 0 0 18px rgba(239, 68, 68, 0);   }
+  100% { box-shadow: 0 0 0 0    rgba(239, 68, 68, 0);   }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.5; }
+}
+
+/* ─── PROCESSING ─────────────────────────────────────────────────────────── */
+.processing-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+::ng-deep .processing-spinner { width: 32px !important; height: 32px !important; }
+
+.processing-text {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* ─── ERROR BANNER ───────────────────────────────────────────────────────── */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  animation: slideDown 0.25s ease-out;
+
+  i { font-size: 1rem; flex-shrink: 0; }
+  span { flex: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ─── PANELS ROW ─────────────────────────────────────────────────────────── */
+.panels-row {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+}
+
+::ng-deep .translator-card {
+  flex: 1;
+  min-height: 160px;
+  transition: opacity 0.25s ease;
+  will-change: opacity;
+}
+
+::ng-deep .translator-card.card-processing { opacity: 0.55; }
+
+::ng-deep .translator-card .p-card-body { padding: 0 16px 16px !important; }
+
+/* ─── CARD HEADER ────────────────────────────────────────────────────────── */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+}
+
+.card-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── TEXTO TRANSCRIPCIÓN ────────────────────────────────────────────────── */
+.transcript-text {
+  font-size: 1rem;
+  color: #1e293b;
+  line-height: 1.65;
+  margin: 0;
+  min-height: 80px;
+  word-break: break-word;
+}
+
+.transcript-text.placeholder {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.transcript-text.translation {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+/* Fade-in cuando aparece texto nuevo */
+.fade-in {
+  animation: fadeIn 0.35s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ─── ARROW DIVIDER ──────────────────────────────────────────────────────── */
+.arrow-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* ─── RATING ─────────────────────────────────────────────────────────────── */
+.rating-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 40px;
+  text-align: center;
+}
+
+.rating-label {
+  font-size: 0.95rem;
+  color: #475569;
+  font-weight: 500;
+  margin: 0;
+}
+
+::ng-deep .p-rating { transform: scale(1.4); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .panels-row { flex-direction: column; }
+
+  ::ng-deep .translator-card { width: 100%; }
+
+  .arrow-divider ::ng-deep .p-button { transform: rotate(90deg); }
+
+  .language-bar { flex-wrap: wrap; }
+}

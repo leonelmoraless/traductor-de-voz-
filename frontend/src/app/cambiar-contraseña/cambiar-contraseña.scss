@@ -1,0 +1,86 @@
+.change-password-principal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #f1f5f9;
+}
+
+.change-password-card {
+  border-radius: 16px;
+  padding: 36px 40px 40px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  width: 360px;
+  box-sizing: border-box;
+
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+  }
+
+  > p {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 4px 0 0;
+  }
+}
+
+/* Brand */
+.change-password-brand {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.brand-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.brand-subtitle {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 4px 0 0;
+}
+
+.change-password-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin: 20px 0 28px;
+}
+
+.change-password-fields p-floatlabel {
+  width: 100%;
+}
+
+::ng-deep .change-password-fields .p-floatlabel {
+  width: 100%;
+}
+
+::ng-deep .change-password-fields .p-password {
+  width: 100%;
+}
+
+::ng-deep .change-password-fields .p-password input {
+  width: 100%;
+}
+
+.change-password-buttons {
+  display: flex;
+  gap: 12px;
+
+  .change-btn {
+    flex: 1;
+  }
+}
+
+::ng-deep .change-btn.p-button {
+  width: 100%;
+  justify-content: center;
+} 

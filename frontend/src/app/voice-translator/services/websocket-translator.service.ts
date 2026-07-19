@@ -1,0 +1,104 @@
+import { Injectable } from '@angular/core';
+import { Subject, Observable } from 'rxjs';
+import { WsMessage } from '../models/translation-result.model';
+
+/**
+ * Servicio encargado de gestionar la comunicación bidireccional
+ * en tiempo real con el servidor FastAPI mediante WebSockets.
+ */
+@Injectable({ providedIn: 'root' })
+export class WebsocketTranslatorService {
+  private ws: WebSocket | null = null;
+
+  // Subjects para emitir eventos recibidos del servidor
+  private readonly _messages$ = new Subject<WsMessage>();
+  readonly messages$: Observable<WsMessage> = this._messages$.asObservable();
+
+  private readonly _connectionStatus$ = new Subject<'connected' | 'disconnected' | 'connecting'>();
+  readonly connectionStatus$: Observable<'connected' | 'disconnected' | 'connecting'> = this._connectionStatus$.asObservable();
+
+  /**
+   * Conecta al WebSocket del servidor y envía la configuración de idiomas.
+   */
+  connect(sourceLang: string, targetLang: string): void {
+    if (this.ws) {
+      this.disconnect();
+    }
+
+    this._connectionStatus$.next('connecting');
+    this.ws = new WebSocket('ws://localhost:8000/ws/translate');
+
+    this.ws.onopen = () => {
+      this._connectionStatus$.next('connected');
+      console.log('[WS] Conectado al servidor de traducción');
+      // Enviar mensaje de configuración inicial
+      this.send({
+        type: 'config',
+        source_lang: sourceLang,
+        target_lang: targetLang
+      });
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const message: WsMessage = JSON.parse(event.data);
+        this._messages$.next(message);
+      } catch (err) {
+        console.error('[WS] Error al decodificar mensaje del servidor:', err);
+      }
+    };
+
+    this.ws.onerror = (err) => {
+      console.error('[WS] Error en la conexión:', err);
+      this._messages$.next({ type: 'error', message: 'Error de conexión con el servidor.' });
+    };
+
+    this.ws.onclose = () => {
+      this._connectionStatus$.next('disconnected');
+      console.log('[WS] Conexión cerrada');
+    };
+  }
+
+  /**
+   * Convierte un Blob de audio (la frase completa) a Base64 y lo envía al servidor.
+   */
+  sendAudioUtterance(blob: Blob): void {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = () => {
+      const base64data = reader.result as string;
+      const base64String = base64data.split(',')[1];
+      
+      this.send({
+        type: 'audio_utterance',
+        data: base64String
+      });
+    };
+  }
+
+  /**
+   * Envía un comando de reinicio para vaciar los buffers acumulados en el servidor.
+   */
+  sendReset(): void {
+    this.send({ type: 'reset' });
+  }
+
+  /**
+   * Cierra la conexión activa de WebSocket.
+   */
+  disconnect(): void {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this._connectionStatus$.next('disconnected');
+  }
+
+  private send(data: any): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(data));
+    } else {
+      console.warn('[WS] Intento de enviar datos con WebSocket cerrado');
+    }
+  }
+}

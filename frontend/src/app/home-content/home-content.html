@@ -1,0 +1,16 @@
+
+<div class="home-wrapper">
+  <h1>Comparador de Imágenes</h1>
+  <p class="home-desc">Desliza para comparar las versiones del logo de la UTM.</p>
+
+  <div class="card flex justify-center">
+    <p-imagecompare class="sm:!w-96 shadow-lg rounded-2xl">
+      <ng-template #left>
+        <img alt="Logo UTM antes" src="/imagen/utm-logo-despues.jpg" />
+      </ng-template>
+      <ng-template #right>
+        <img alt="Logo UTM después" src="/imagen/utm-logo-antes.jpg" />
+      </ng-template>
+    </p-imagecompare>
+  </div>
+</div>

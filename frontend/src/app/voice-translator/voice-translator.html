@@ -1,0 +1,119 @@
+<div class="translator-wrapper">
+
+  <!-- ─── SUBHEADER ──────────────────────────────────────────────────────── -->
+  <div class="translator-subheader">
+    <span class="header-subtitle">
+      {{ sourceLang.flag }} {{ sourceLang.name }} → {{ targetLang.flag }} {{ targetLang.name }}
+    </span>
+    <div class="header-buttons">
+      <p-button label="Ver Planes" icon="pi pi-crown" severity="info"
+        [outlined]="true" size="small" (onClick)="verPlanes()" />
+      <p-button label="Cerrar sesión" icon="pi pi-sign-out" severity="secondary"
+        [outlined]="true" size="small" (onClick)="cerrarSesion()" />
+    </div>
+  </div>
+
+  <!-- ─── LANGUAGE SELECTOR ─────────────────────────────────────────────── -->
+  <div class="language-bar">
+    <p-select [options]="languages" [(ngModel)]="sourceLang" optionLabel="name"
+      placeholder="Idioma de entrada" styleClass="lang-select" [disabled]="!isIdle()" />
+
+    <p-button icon="pi pi-arrow-right-arrow-left" [rounded]="true" severity="secondary"
+      [outlined]="true" size="small" pTooltip="Intercambiar idiomas"
+      [disabled]="!isIdle()" (onClick)="swapLanguages()" />
+
+    <p-select [options]="languages" [(ngModel)]="targetLang" optionLabel="name"
+      placeholder="Idioma de salida" styleClass="lang-select" [disabled]="!isIdle()" />
+  </div>
+
+  <!-- ─── MIC BUTTON ────────────────────────────────────────────────────── -->
+  <div class="mic-section">
+    <p-button
+      [icon]="micIcon()"
+      [rounded]="true"
+      [severity]="micSeverity()"
+      size="large"
+      styleClass="mic-btn"
+      [class.listening-pulse]="isListening()"
+      (onClick)="toggleRecording()" />
+
+    <p class="mic-main-label" [class.recording-label]="isListening() || isProcessing()">
+      {{ micMainLabel() }}
+    </p>
+
+    @if (micSubLabel()) {
+      <p class="mic-sub-label">{{ micSubLabel() }}</p>
+    }
+
+    @if (isProcessing()) {
+      <div class="processing-indicator">
+        <p-progressSpinner styleClass="processing-spinner" strokeWidth="4" />
+        <span class="processing-text">Analizando con Whisper...</span>
+      </div>
+    }
+  </div>
+
+  <!-- ─── ERROR BANNER ──────────────────────────────────────────────────── -->
+  @if (isError()) {
+    <div class="error-banner">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ errorMessage() }}</span>
+      <p-button label="Reintentar" icon="pi pi-refresh" severity="danger"
+        size="small" [outlined]="true" (onClick)="toggleRecording()" />
+    </div>
+  }
+
+  <!-- ─── TEXT PANELS ───────────────────────────────────────────────────── -->
+  <div class="panels-row">
+
+    <!-- Entrada / Transcripción -->
+    <p-card styleClass="translator-card" [class.card-processing]="isProcessing()">
+      <ng-template #header>
+        <div class="card-header">
+          <span class="card-title"><i class="pi pi-microphone"></i> Entrada ({{ sourceLang.name }})</span>
+          <p-tag [value]="inputStatusLabel()" [severity]="inputStatusSeverity()" />
+        </div>
+      </ng-template>
+      @if (transcripcion()) {
+        <p class="transcript-text fade-in">{{ transcripcion() }}</p>
+      } @else {
+        <p class="transcript-text placeholder">
+          @if (isListening()) { 🔴 Escuchando... habla ahora. }
+          @else if (isProcessing()) { ⏳ Transcribiendo... }
+          @else { Esperando entrada de voz... }
+        </p>
+      }
+    </p-card>
+
+    <!-- Flecha -->
+    <div class="arrow-divider">
+      <p-button icon="pi pi-arrow-right" [rounded]="true" severity="primary" [disabled]="true" />
+    </div>
+
+    <!-- Salida / Traducción -->
+    <p-card styleClass="translator-card" [class.card-processing]="isProcessing()">
+      <ng-template #header>
+        <div class="card-header">
+          <span class="card-title"><i class="pi pi-language"></i> Traducción ({{ targetLang.name }})</span>
+          <p-tag [value]="translationStatusLabel()" [severity]="inputStatusSeverity()" />
+        </div>
+      </ng-template>
+      @if (traduccion()) {
+        <p class="transcript-text translation fade-in">{{ traduccion() }}</p>
+      } @else {
+        <p class="transcript-text placeholder">
+          @if (isProcessing()) { ⏳ Traduciendo... }
+          @else { La traducción aparecerá aquí... }
+        </p>
+      }
+    </p-card>
+
+  </div>
+
+  <!-- ─── RATING ─────────────────────────────────────────────────────────── -->
+  <div class="rating-section">
+    <p class="rating-label">Califica la aplicación:</p>
+    <p-rating [(ngModel)]="ratingValue" />
+  </div>
+
+</div>

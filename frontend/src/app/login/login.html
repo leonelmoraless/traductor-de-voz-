@@ -1,0 +1,31 @@
+<div class="login-principal">
+  <div class="login-card">
+
+    <div class="login-brand">
+      <h1 class="brand-title">LOGIN</h1>
+      <p class="brand-subtitle">Traductor de voz en tiempo real</p>
+    </div>
+
+    <p-divider />
+
+    <div class="login-fields">
+      <p-floatlabel variant="in">
+        <input pInputText id="username" [(ngModel)]="username" autocomplete="off" />
+        <label for="username">Usuario</label>
+      </p-floatlabel>
+
+      <p-floatLabel variant="in">
+        <p-password [(ngModel)]="password" [toggleMask]="true" autocomplete="off" />
+        <label for="password">Contraseña</label>
+      </p-floatLabel>
+    </div>
+
+    <p-button label="Entrar" icon="pi pi-sign-in" iconPos="right" styleClass="login-btn" (onClick)="entrar()" />
+
+    <div class="login-links">
+      <p-button label="¿No tienes cuenta? Regístrate" [text]="true" severity="info" (onClick)="irARegistro()" />
+      <p-button label="¿Olvidaste la contraseña?" [text]="true" severity="secondary" (onClick)="irACambiarContrasena()" />
+    </div>
+
+  </div>
+</div>

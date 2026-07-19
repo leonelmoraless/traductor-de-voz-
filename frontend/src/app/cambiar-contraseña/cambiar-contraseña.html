@@ -1,0 +1,34 @@
+<div class="change-password-principal">
+  <div class="change-password-card">
+
+    <div class="change-password-brand">
+      <h1 class="brand-title">CAMBIAR CONTRASEÑA</h1>
+    </div>
+
+    <p-divider />
+
+    <div class="change-password-fields">
+      <p-floatlabel variant="in">
+        <p-password [(ngModel)]="passwordAnterior" [toggleMask]="true" autocomplete="off" />
+        <label for="passwordAnterior">Contraseña actual</label>
+      </p-floatlabel>
+
+      <p-floatlabel variant="in">
+        <p-password [(ngModel)]="passwordNueva" [toggleMask]="true" autocomplete="off" />
+        
+        <label for="passwordNueva">Contraseña nueva</label>
+      </p-floatlabel>
+
+      <p-floatlabel variant="in">
+        <p-password [(ngModel)]="confirmPassword" [toggleMask]="true" autocomplete="off" />
+        
+        <label for="confirmPassword">Confirmar contraseña nueva</label>
+      </p-floatlabel>
+    </div>
+
+    <div class="change-password-buttons">
+      <p-button label="Cambiar contraseña" (onClick)="cambiarContrasena()" styleClass="change-btn" />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="volver()" />
+    </div>
+  </div>
+</div>
