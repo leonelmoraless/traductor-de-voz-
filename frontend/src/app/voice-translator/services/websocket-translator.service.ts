@@ -18,9 +18,10 @@ export class WebsocketTranslatorService {
   readonly connectionStatus$: Observable<'connected' | 'disconnected' | 'connecting'> = this._connectionStatus$.asObservable();
 
   /**
-   * Conecta al WebSocket del servidor y envía la configuración de idiomas.
+   * Conecta al WebSocket del servidor.
+   * El idioma ya no se envía porque el backend lo detecta automáticamente.
    */
-  connect(sourceLang: string, targetLang: string): void {
+  connect(): void {
     if (this.ws) {
       this.disconnect();
     }
@@ -30,13 +31,7 @@ export class WebsocketTranslatorService {
 
     this.ws.onopen = () => {
       this._connectionStatus$.next('connected');
-      console.log('[WS] Conectado al servidor de traducción');
-      // Enviar mensaje de configuración inicial
-      this.send({
-        type: 'config',
-        source_lang: sourceLang,
-        target_lang: targetLang
-      });
+      console.log('[WS] Conectado al servidor de traducción (bidireccional auto-detect)');
     };
 
     this.ws.onmessage = (event) => {
@@ -57,6 +52,18 @@ export class WebsocketTranslatorService {
       this._connectionStatus$.next('disconnected');
       console.log('[WS] Conexión cerrada');
     };
+  }
+
+  /**
+   * Envía la configuración de idiomas al servidor.
+   */
+  sendConfig(mode: 'auto' | 'manual', lang1?: string, lang2?: string): void {
+    const configMsg: any = { type: 'config', mode };
+    if (mode === 'manual' && lang1 && lang2) {
+      configMsg.lang1 = lang1;
+      configMsg.lang2 = lang2;
+    }
+    this.send(configMsg);
   }
 
   /**

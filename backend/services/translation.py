@@ -2,13 +2,11 @@
 Servicio de traducción de texto.
 
 Responsabilidad única: recibir un texto y devolver su traducción
-al idioma destino usando la librería googletrans (Google Translate, sin API key).
+al idioma destino usando deep-translator (Google Translate, sin API key).
+Compatible con Python 3.13+.
 """
 
-from googletrans import Translator
-
-# ─── Singleton del cliente ────────────────────────────────────────────────────
-_translator: Translator = Translator()
+from deep_translator import GoogleTranslator
 
 
 # ─── API pública ──────────────────────────────────────────────────────────────
@@ -26,7 +24,7 @@ def translate(text: str, source_lang: str, target_lang: str) -> str:
         Texto traducido.
 
     Raises:
-        Exception: Si googletrans falla al conectarse con Google.
+        Exception: Si deep-translator falla al conectarse con Google.
     """
-    result = _translator.translate(text, src=source_lang, dest=target_lang)
-    return result.text
+    translator = GoogleTranslator(source=source_lang, target=target_lang)
+    return translator.translate(text)

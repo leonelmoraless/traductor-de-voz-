@@ -8,7 +8,7 @@
 /* ─── SUBHEADER ──────────────────────────────────────────────────────────── */
 .translator-subheader {
   padding: 10px 0;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
@@ -16,9 +16,10 @@
 }
 
 .header-subtitle {
-  font-size: 0.82rem;
-  color: #3b82f6;
+  font-size: 0.85rem;
+  color: #6366f1;
   font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .header-buttons {
@@ -28,39 +29,149 @@
 }
 
 /* ─── LANGUAGE BAR ───────────────────────────────────────────────────────── */
+.language-bar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
 .language-bar {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-bottom: 32px;
 }
 
 ::ng-deep .lang-select { min-width: 160px; }
+
+/* ─── TOGGLE MODO ────────────────────────────────────────────────────────── */
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 20px;
+  transition: opacity 0.2s;
+
+  &.disabled { opacity: 0.6; pointer-events: none; }
+}
+
+.toggle-track {
+  width: 36px;
+  height: 20px;
+  background: #cbd5e1;
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.3s;
+  
+  &.active {
+    background: #6366f1;
+    .toggle-thumb { transform: translateX(16px); }
+  }
+}
+
+.toggle-thumb {
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.toggle-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #475569;
+}
+
 
 /* ─── MIC SECTION ────────────────────────────────────────────────────────── */
 .mic-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 36px;
+  gap: 10px;
+  margin-bottom: 32px;
 }
 
-::ng-deep .mic-btn.p-button {
-  width: 80px !important;
-  height: 80px !important;
-  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
-  will-change: transform, box-shadow;
+/* Botón Micrófono personalizado */
+.mic-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  background: linear-gradient(135deg, #6366f1, #3b82f6);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+  outline: none;
 
-  &:hover:not(:disabled) { transform: scale(1.06); }
-  &:active:not(:disabled) { transform: scale(0.97); }
+  &:hover { transform: scale(1.06); box-shadow: 0 6px 24px rgba(99, 102, 241, 0.45); }
+  &:active { transform: scale(0.96); }
 }
 
-::ng-deep .mic-btn .p-button-icon { font-size: 1.8rem !important; }
+.mic-btn--active {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.35);
+  animation: pulse-ring 1.8s ease-out infinite;
 
+  &:hover { box-shadow: 0 6px 24px rgba(239, 68, 68, 0.5); }
+}
+
+.mic-btn--processing {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.4);
+  animation: pulse-ring-amber 1.4s ease-out infinite;
+}
+
+.mic-btn--error {
+  background: linear-gradient(135deg, #b91c1c, #ef4444);
+  box-shadow: 0 4px 18px rgba(185, 28, 28, 0.4);
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0    rgba(239, 68, 68, 0.55), 0 4px 18px rgba(239, 68, 68, 0.3); }
+  70%  { box-shadow: 0 0 0 18px rgba(239, 68, 68, 0),    0 4px 18px rgba(239, 68, 68, 0.3); }
+  100% { box-shadow: 0 0 0 0    rgba(239, 68, 68, 0),    0 4px 18px rgba(239, 68, 68, 0.3); }
+}
+
+@keyframes pulse-ring-amber {
+  0%   { box-shadow: 0 0 0 0    rgba(245, 158, 11, 0.55), 0 4px 18px rgba(245, 158, 11, 0.3); }
+  70%  { box-shadow: 0 0 0 16px rgba(245, 158, 11, 0),    0 4px 18px rgba(245, 158, 11, 0.3); }
+  100% { box-shadow: 0 0 0 0    rgba(245, 158, 11, 0),    0 4px 18px rgba(245, 158, 11, 0.3); }
+}
+
+/* ─── ANIMACIÓN DE ONDAS ─────────────────────────────────────────────────── */
+.wave-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  width: 280px;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  overflow: hidden;
+  animation: fadeIn 0.3s ease-out;
+
+  canvas { display: block; }
+}
+
+/* ─── ETIQUETAS MIC ──────────────────────────────────────────────────────── */
 .mic-main-label {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   font-size: 0.95rem;
   font-weight: 600;
   color: #475569;
@@ -74,25 +185,14 @@
 
 .mic-sub-label {
   margin: 0;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   color: #94a3b8;
   font-style: italic;
   text-align: center;
 }
 
-/* Pulso rojo cuando graba */
-::ng-deep .listening-pulse.p-button {
-  animation: pulse 1.6s ease-out infinite;
-}
-
-@keyframes pulse {
-  0%   { box-shadow: 0 0 0 0    rgba(239, 68, 68, 0.5); }
-  70%  { box-shadow: 0 0 0 18px rgba(239, 68, 68, 0);   }
-  100% { box-shadow: 0 0 0 0    rgba(239, 68, 68, 0);   }
-}
-
 @keyframes blink {
-  0%, 100% { opacity: 1;   }
+  0%, 100% { opacity: 1; }
   50%       { opacity: 0.5; }
 }
 
@@ -102,7 +202,7 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 ::ng-deep .processing-spinner { width: 32px !important; height: 32px !important; }
@@ -113,14 +213,11 @@
   font-style: italic;
 }
 
-/* ─── ERROR BANNER ───────────────────────────────────────────────────────── */
-.error-banner {
+/* ─── BANNERS ─────────────────────────────────────────────────────────────── */
+.error-banner, .warning-banner {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
   border-radius: 8px;
   padding: 10px 16px;
   margin-bottom: 20px;
@@ -129,6 +226,18 @@
 
   i { font-size: 1rem; flex-shrink: 0; }
   span { flex: 1; }
+}
+
+.error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.warning-banner {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
 }
 
 @keyframes slideDown {
@@ -147,11 +256,9 @@
   flex: 1;
   min-height: 160px;
   transition: opacity 0.25s ease;
-  will-change: opacity;
 }
 
-::ng-deep .translator-card.card-processing { opacity: 0.55; }
-
+::ng-deep .translator-card.card-processing { opacity: 0.5; }
 ::ng-deep .translator-card .p-card-body { padding: 0 16px 16px !important; }
 
 /* ─── CARD HEADER ────────────────────────────────────────────────────────── */
@@ -171,7 +278,18 @@
   gap: 6px;
 }
 
-/* ─── TEXTO TRANSCRIPCIÓN ────────────────────────────────────────────────── */
+.lang-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #ede9fe;
+  color: #6d28d9;
+  padding: 2px 8px;
+  border-radius: 20px;
+  &.target { background: #eff6ff; color: #2563eb; }
+}
+
+
+/* ─── TEXTO ─────────────────────────────────────────────────────────────── */
 .transcript-text {
   font-size: 1rem;
   color: #1e293b;
@@ -191,10 +309,7 @@
   font-weight: 500;
 }
 
-/* Fade-in cuando aparece texto nuevo */
-.fade-in {
-  animation: fadeIn 0.35s ease-out;
-}
+.fade-in { animation: fadeIn 0.35s ease-out; }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
@@ -215,7 +330,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 12px;
   margin-top: 40px;
   text-align: center;
@@ -233,10 +347,7 @@
 /* ─── RESPONSIVE ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .panels-row { flex-direction: column; }
-
   ::ng-deep .translator-card { width: 100%; }
-
   .arrow-divider ::ng-deep .p-button { transform: rotate(90deg); }
-
-  .language-bar { flex-wrap: wrap; }
+  .wave-container { width: 220px; }
 }

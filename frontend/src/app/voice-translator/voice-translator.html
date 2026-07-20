@@ -14,28 +14,38 @@
   </div>
 
   <!-- ─── LANGUAGE SELECTOR ─────────────────────────────────────────────── -->
-  <div class="language-bar">
-    <p-select [options]="languages" [(ngModel)]="sourceLang" optionLabel="name"
-      placeholder="Idioma de entrada" styleClass="lang-select" [disabled]="!isIdle()" />
+  <div class="language-bar-container">
+    <div class="language-bar">
+      <p-select [options]="languages" [(ngModel)]="sourceLang" (ngModelChange)="onConfigChange()" optionLabel="name"
+        placeholder="Idioma de entrada" styleClass="lang-select" [disabled]="!isIdle()" />
 
-    <p-button icon="pi pi-arrow-right-arrow-left" [rounded]="true" severity="secondary"
-      [outlined]="true" size="small" pTooltip="Intercambiar idiomas"
-      [disabled]="!isIdle()" (onClick)="swapLanguages()" />
+      <p-button icon="pi pi-arrow-right-arrow-left" [rounded]="true" severity="secondary"
+        [outlined]="true" size="small" pTooltip="Intercambiar idiomas"
+        [disabled]="!isIdle()" (onClick)="swapLanguages()" />
 
-    <p-select [options]="languages" [(ngModel)]="targetLang" optionLabel="name"
-      placeholder="Idioma de salida" styleClass="lang-select" [disabled]="!isIdle()" />
+      <p-select [options]="languages" [(ngModel)]="targetLang" (ngModelChange)="onConfigChange()" optionLabel="name"
+        placeholder="Idioma de salida" styleClass="lang-select" [disabled]="!isIdle()" />
+    </div>
   </div>
 
-  <!-- ─── MIC BUTTON ────────────────────────────────────────────────────── -->
+  <!-- ─── MIC BUTTON Y ONDAS ────────────────────────────────────────────── -->
   <div class="mic-section">
-    <p-button
-      [icon]="micIcon()"
-      [rounded]="true"
-      [severity]="micSeverity()"
-      size="large"
-      styleClass="mic-btn"
-      [class.listening-pulse]="isListening()"
-      (onClick)="toggleRecording()" />
+    <!-- Botón Micrófono -->
+    <button class="mic-btn"
+      [class.mic-btn--active]="isListening()"
+      [class.mic-btn--processing]="isProcessing()"
+      [class.mic-btn--error]="isError()"
+      (click)="toggleRecording()"
+      [attr.aria-label]="micMainLabel()">
+      <i [class]="isListening() || isProcessing() ? 'pi pi-stop-circle' : 'pi pi-microphone'"></i>
+    </button>
+
+    <!-- Animación de Ondas (Canvas) -->
+    @if (isListening() || isProcessing()) {
+      <div class="wave-container fade-in">
+        <canvas #waveCanvas width="280" height="64"></canvas>
+      </div>
+    }
 
     <p class="mic-main-label" [class.recording-label]="isListening() || isProcessing()">
       {{ micMainLabel() }}
@@ -48,14 +58,21 @@
     @if (isProcessing()) {
       <div class="processing-indicator">
         <p-progressSpinner styleClass="processing-spinner" strokeWidth="4" />
-        <span class="processing-text">Analizando con Whisper...</span>
+        <span class="processing-text">Analizando con Whisper AI...</span>
       </div>
     }
   </div>
 
-  <!-- ─── ERROR BANNER ──────────────────────────────────────────────────── -->
+  <!-- ─── ERROR / WARNING BANNER ───────────────────────────────────────── -->
+  @if (errorMessage() && !isError()) {
+    <div class="warning-banner fade-in">
+      <i class="pi pi-info-circle"></i>
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
   @if (isError()) {
-    <div class="error-banner">
+    <div class="error-banner fade-in">
       <i class="pi pi-exclamation-triangle"></i>
       <span>{{ errorMessage() }}</span>
       <p-button label="Reintentar" icon="pi pi-refresh" severity="danger"
@@ -70,7 +87,15 @@
     <p-card styleClass="translator-card" [class.card-processing]="isProcessing()">
       <ng-template #header>
         <div class="card-header">
-          <span class="card-title"><i class="pi pi-microphone"></i> Entrada ({{ sourceLang.name }})</span>
+          <span class="card-title">
+            <i class="pi pi-microphone"></i>
+            Entrada 
+            @if (detectedLang()) {
+              <span class="lang-badge">{{ detectedLang() | uppercase }}</span>
+            } @else {
+              ({{ sourceLang.name }})
+            }
+          </span>
           <p-tag [value]="inputStatusLabel()" [severity]="inputStatusSeverity()" />
         </div>
       </ng-template>
@@ -78,7 +103,7 @@
         <p class="transcript-text fade-in">{{ transcripcion() }}</p>
       } @else {
         <p class="transcript-text placeholder">
-          @if (isListening()) { 🔴 Escuchando... habla ahora. }
+          @if (isListening()) { 🎙️ Escuchando... }
           @else if (isProcessing()) { ⏳ Transcribiendo... }
           @else { Esperando entrada de voz... }
         </p>
@@ -94,8 +119,16 @@
     <p-card styleClass="translator-card" [class.card-processing]="isProcessing()">
       <ng-template #header>
         <div class="card-header">
-          <span class="card-title"><i class="pi pi-language"></i> Traducción ({{ targetLang.name }})</span>
-          <p-tag [value]="translationStatusLabel()" [severity]="inputStatusSeverity()" />
+          <span class="card-title">
+            <i class="pi pi-language"></i>
+            Traducción
+            @if (resultTarget()) {
+              <span class="lang-badge target">{{ resultTarget() | uppercase }}</span>
+            } @else {
+              ({{ targetLang.name }})
+            }
+          </span>
+          <p-tag [value]="inputStatusLabel()" [severity]="inputStatusSeverity()" />
         </div>
       </ng-template>
       @if (traduccion()) {

@@ -1,101 +1,92 @@
-import { Component, inject, signal, computed, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnDestroy, ElementRef, ViewChild, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { SelectModule } from 'primeng/select';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { RatingModule } from 'primeng/rating';
-import { CommonModule } from '@angular/common';
 
 import { AudioRecorderService } from './services/audio-recorder.service';
 import { WebsocketTranslatorService } from './services/websocket-translator.service';
-import { Language, RecordingState, WsMessage } from './models/translation-result.model';
+import { RecordingState, WsMessage, Language } from './models/translation-result.model';
 
-/**
- * Componente del Traductor de Voz con WebSockets.
- *
- * Flujo en tiempo real:
- *  1. Iniciar escucha → Conecta al WebSocket, abre el micrófono persistente.
- *  2. Mientras habla → Cada 2.5s se envía un fragmento de audio al backend.
- *  3. El panel de entrada muestra la transcripción parcial en vivo.
- *  4. Pausa de 2s → El backend traduce el texto acumulado y genera el audio.
- *  5. El panel de traducción se actualiza y el audio se reproduce.
- */
 @Component({
   selector: 'app-voice-translator',
   imports: [
     CommonModule, FormsModule,
-    ButtonModule, CardModule, TagModule,
-    SelectModule, ProgressSpinnerModule, RatingModule,
+    ButtonModule, CardModule, TagModule, SelectModule,
+    ProgressSpinnerModule, RatingModule,
   ],
   templateUrl: './voice-translator.html',
   styleUrl: './voice-translator.scss',
 })
 export class VoiceTranslator implements OnDestroy {
-  private router = inject(Router);
+  @ViewChild('waveCanvas') waveCanvasRef!: ElementRef<HTMLCanvasElement>;
+
+  private router       = inject(Router);
   private audioRecorder = inject(AudioRecorderService);
-  private wsTranslator = inject(WebsocketTranslatorService);
+  private wsTranslator  = inject(WebsocketTranslatorService);
+  private ngZone        = inject(NgZone);
 
-  // ─── Estado reactivo (signals) ─────────────────────────────────────────────
-  readonly state = signal<RecordingState>('idle');
+  // ─── Estado reactivo ───────────────────────────────────────────────────────
+  readonly state         = signal<RecordingState>('idle');
   readonly transcripcion = signal('');
-  readonly traduccion = signal('');
-  readonly errorMessage = signal('');
+  readonly traduccion    = signal('');
+  readonly errorMessage  = signal('');
+  readonly detectedLang  = signal<string | null>(null);
+  readonly resultTarget  = signal<string | null>(null);
 
-  /** Suscripciones activas durante el modo escucha */
+  ratingValue = 0;
   private subs: Subscription[] = [];
 
-  // ─── Idiomas ───────────────────────────────────────────────────────────────
+  // Animación de ondas
+  private volumeLevel = 0;
+  private waveAnimId: number | null = null;
+  private readonly WAVE_BARS = 32;
+
+  // ─── Configuración de Idiomas ──────────────────────────────────────────────
   readonly languages: Language[] = [
     { name: 'Español', code: 'es', flag: '🇲🇽' },
     { name: 'Inglés', code: 'en', flag: '🇺🇸' },
+    { name: 'Francés', code: 'fr', flag: '🇫🇷' },
+    { name: 'Alemán', code: 'de', flag: '🇩🇪' },
   ];
+
   sourceLang: Language = this.languages[0];
   targetLang: Language = this.languages[1];
-  ratingValue = 0;
 
   // ─── Computed ──────────────────────────────────────────────────────────────
-  readonly isIdle = computed(() => this.state() === 'idle');
-  readonly isListening = computed(() => this.state() === 'listening');
+  readonly isIdle       = computed(() => this.state() === 'idle');
+  readonly isListening  = computed(() => this.state() === 'listening');
   readonly isProcessing = computed(() => this.state() === 'processing');
-  readonly isError = computed(() => this.state() === 'error');
-
-  readonly micIcon = computed(() =>
-    this.isListening() || this.isProcessing() ? 'pi pi-stop-circle' : 'pi pi-microphone'
-  );
-
-  readonly micSeverity = computed<'danger' | 'primary'>(() =>
-    this.isListening() || this.isProcessing() ? 'danger' : 'primary'
-  );
+  readonly isError      = computed(() => this.state() === 'error');
 
   readonly micMainLabel = computed(() =>
     this.isIdle() ? 'Iniciar escucha' : 'Detener'
   );
 
   readonly micSubLabel = computed(() => {
-    if (this.isListening()) return 'Habla ahora... la transcripción aparecerá en tiempo real.';
+    if (this.isListening()) {
+      return `Habla en ${this.sourceLang.name} o ${this.targetLang.name}...`;
+    }
     if (this.isProcessing()) return 'Traduciendo y generando voz...';
     return '';
   });
 
-  readonly inputStatusLabel = computed(() => ({
-    idle: 'En espera', listening: 'Escuchando', processing: 'Procesando', done: 'Listo', error: 'Error'
-  }[this.state()]));
+  readonly inputStatusLabel = computed(() =>
+    ({ idle: 'En espera', listening: 'Escuchando', processing: 'Procesando', done: 'Listo', error: 'Error' }[this.state()])
+  );
 
-  readonly inputStatusSeverity = computed<'secondary' | 'warn' | 'success' | 'danger'>(() => ({
-    idle: 'secondary', listening: 'warn', processing: 'warn', done: 'success', error: 'danger'
-  }[this.state()] as 'secondary' | 'warn' | 'success' | 'danger'));
+  readonly inputStatusSeverity = computed<'secondary' | 'warn' | 'success' | 'danger'>(() =>
+    ({ idle: 'secondary', listening: 'warn', processing: 'warn', done: 'success', error: 'danger' }[this.state()] as any)
+  );
 
-  readonly translationStatusLabel = computed(() => ({
-    idle: 'En espera', listening: 'Escuchando', processing: 'Traduciendo', done: 'Lista', error: 'Error'
-  }[this.state()]));
+  // ─── Acciones públicas ─────────────────────────────────────────────────────
 
-  // ─── Acciones ──────────────────────────────────────────────────────────────
-
-  /** Inicia o detiene la sesión de traducción. */
   async toggleRecording(): Promise<void> {
     if (this.isIdle() || this.isError()) {
       await this.startListening();
@@ -104,53 +95,75 @@ export class VoiceTranslator implements OnDestroy {
     }
   }
 
-  /**
-   * Conecta al WebSocket, suscribe la UI a los eventos y abre el micrófono.
-   */
+  swapLanguages(): void {
+    if (!this.isIdle()) return;
+    [this.sourceLang, this.targetLang] = [this.targetLang, this.sourceLang];
+    this.onConfigChange();
+  }
+
+  onConfigChange(): void {
+    // Envia la config al backend inmediatamente (si está conectado)
+    this.wsTranslator.sendConfig('manual', this.sourceLang.code, this.targetLang.code);
+  }
+
+  // ─── Internos ──────────────────────────────────────────────────────────────
+
   private async startListening(): Promise<void> {
     this.resetResults();
     this.state.set('listening');
 
     try {
-      // 1. Conectar WebSocket e inicializar canales de datos
-      this.wsTranslator.connect(this.sourceLang.code, this.targetLang.code);
+      this.wsTranslator.connect();
+      // Esperar brevemente a que conecte para mandar config inicial
+      setTimeout(() => this.onConfigChange(), 500);
+
       this._subscribeToWsMessages();
 
-      // 2. Abrir micrófono y activar listeners locales
       await this.audioRecorder.startRecording();
 
-      // En la arquitectura VAD, cuando el usuario hace una pausa, se emite toda la frase.
       this.subs.push(
-        this.audioRecorder.onUtteranceReady$.subscribe((blob) => {
-          this.state.set('processing'); // Cambiar UI a procesando
-          this.wsTranslator.sendAudioUtterance(blob); // Enviar todo al backend de golpe
+        this.audioRecorder.onVolumeLevel$.subscribe(vol => {
+          this.volumeLevel = vol;
         })
       );
 
+      this.subs.push(
+        this.audioRecorder.onUtteranceReady$.subscribe((blob) => {
+          this.ngZone.run(() => this.state.set('processing'));
+          this.wsTranslator.sendAudioUtterance(blob);
+        })
+      );
+
+      this._startWaveAnimation();
+
     } catch (err) {
-      this.setError('No se pudo acceder al micrófono o servidor.');
-      this.stopAll();
+      this.setError('No se pudo acceder al micrófono. Por favor, revisa los permisos.');
     }
   }
 
-  /**
-   * Suscribe el componente a los mensajes entrantes del WebSocket.
-   */
   private _subscribeToWsMessages(): void {
     this.subs.push(
       this.wsTranslator.messages$.subscribe((msg: WsMessage) => {
         switch (msg.type) {
           case 'translation_result':
-            // Se recibe traducción y voz sintetizada final
             this.transcripcion.set(msg.transcripcion);
             this.traduccion.set(msg.traduccion);
+            this.detectedLang.set(msg.source_lang ?? null);
+            this.resultTarget.set(msg.target_lang ?? null);
+            this.state.set('listening');
             this.playAudio(msg.audio_base64);
-            this.state.set('listening'); // Listo para seguir escuchando la siguiente frase
+            break;
+
+          case 'no_speech':
+            this.errorMessage.set(msg.message);
+            this.state.set('listening');
+            setTimeout(() => this.errorMessage.set(''), 4000);
             break;
 
           case 'error':
-            this.setError(msg.message);
-            this.state.set('listening'); // Reanuda la escucha para no interrumpir
+            this.errorMessage.set(msg.message ?? 'Error desconocido.');
+            this.state.set('listening');
+            setTimeout(() => this.errorMessage.set(''), 5000);
             break;
         }
       })
@@ -164,34 +177,101 @@ export class VoiceTranslator implements OnDestroy {
     );
   }
 
-  /** Detiene todo: desconecta WebSocket, libera micrófono y limpia suscripciones. */
   private async stopAll(): Promise<void> {
-    // 1. Limpiar suscripciones locales para evitar memory leaks
+    this._stopWaveAnimation();
     this.subs.forEach(sub => sub.unsubscribe());
     this.subs = [];
-
-    // 2. Apagar micrófono
     await this.audioRecorder.fullyStop();
-
-    // 3. Desconectar WebSocket
     this.wsTranslator.disconnect();
-
     this.state.set('idle');
+    this.volumeLevel = 0;
+    this._clearCanvas();
   }
 
-  swapLanguages(): void {
-    [this.sourceLang, this.targetLang] = [this.targetLang, this.sourceLang];
-    if (this.isListening() || this.isProcessing()) {
-      // Si estamos en medio de una grabación, reseteamos el buffer de traducción en el server
-      this.wsTranslator.sendReset();
-      this.wsTranslator.connect(this.sourceLang.code, this.targetLang.code);
+  // ─── Animación de Ondas ────────────────────────────────────────────────────
+
+  private _startWaveAnimation(): void {
+    setTimeout(() => this._drawWave(), 100);
+  }
+
+  private _drawWave(): void {
+    if (!this.waveCanvasRef) return;
+    const canvas = this.waveCanvasRef.nativeElement;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const draw = () => {
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const barWidth = 4;
+      const gap = (W - this.WAVE_BARS * barWidth) / (this.WAVE_BARS + 1);
+      const vol = this.volumeLevel;
+      const isActive = this.isListening() || this.isProcessing();
+
+      for (let i = 0; i < this.WAVE_BARS; i++) {
+        const x = gap + i * (barWidth + gap);
+        const phase = (Date.now() / 150 + i * 0.4);
+        const sinVal = Math.abs(Math.sin(phase));
+        const minH = 4;
+        const maxH = H * 0.85;
+
+        let barH: number;
+        if (!isActive) {
+          barH = minH;
+        } else if (vol < 0.02) {
+          barH = minH + sinVal * (H * 0.12);
+        } else {
+          barH = minH + sinVal * vol * (maxH - minH);
+        }
+
+        const y = (H - barH) / 2;
+
+        const grad = ctx.createLinearGradient(0, y, 0, y + barH);
+        if (this.isProcessing()) {
+          grad.addColorStop(0, '#f59e0b');
+          grad.addColorStop(1, '#d97706');
+        } else if (isActive) {
+          grad.addColorStop(0, '#6366f1');
+          grad.addColorStop(1, '#3b82f6');
+        } else {
+          grad.addColorStop(0, '#cbd5e1');
+          grad.addColorStop(1, '#94a3b8');
+        }
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(x, y, barWidth, barH, 2);
+        ctx.fill();
+      }
+
+      this.waveAnimId = requestAnimationFrame(draw);
+    };
+
+    this.waveAnimId = requestAnimationFrame(draw);
+  }
+
+  private _stopWaveAnimation(): void {
+    if (this.waveAnimId !== null) {
+      cancelAnimationFrame(this.waveAnimId);
+      this.waveAnimId = null;
     }
+  }
+
+  private _clearCanvas(): void {
+    if (!this.waveCanvasRef) return;
+    const canvas = this.waveCanvasRef.nativeElement;
+    const ctx = canvas.getContext('2d');
+    ctx?.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   private resetResults(): void {
     this.transcripcion.set('');
     this.traduccion.set('');
     this.errorMessage.set('');
+    this.detectedLang.set(null);
+    this.resultTarget.set(null);
   }
 
   private setError(message: string): void {
@@ -199,9 +279,7 @@ export class VoiceTranslator implements OnDestroy {
     this.state.set('error');
   }
 
-  ngOnDestroy(): void {
-    this.stopAll();
-  }
+  ngOnDestroy(): void { this.stopAll(); }
 
   cerrarSesion(): void { this.router.navigate(['/login']); }
   verPlanes(): void { this.router.navigate(['/planes']); }

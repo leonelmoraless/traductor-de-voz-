@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
-openai-whisper
-googletrans==4.0.0rc1
+faster-whisper
+deep-translator
 gTTS
 python-multipart
