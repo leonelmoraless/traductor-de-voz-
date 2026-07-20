@@ -50,10 +50,10 @@ export class VoiceTranslator implements OnDestroy {
 
   // ─── Configuración de Idiomas ──────────────────────────────────────────────
   readonly languages: Language[] = [
-    { name: 'Español', code: 'es', flag: '🇲🇽' },
-    { name: 'Inglés', code: 'en', flag: '🇺🇸' },
-    { name: 'Francés', code: 'fr', flag: '🇫🇷' },
-    { name: 'Alemán', code: 'de', flag: '🇩🇪' },
+    { name: 'Español', code: 'es', flag: 'es' },
+    { name: 'Inglés', code: 'en', flag: 'en' },
+    { name: 'Francés', code: 'fr', flag: 'fr' },
+    { name: 'Alemán', code: 'de', flag: 'de' },
   ];
 
   sourceLang: Language = this.languages[0];

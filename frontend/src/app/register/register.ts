@@ -23,7 +23,6 @@ import { DividerModule } from 'primeng/divider';
   styleUrl: './register.scss',
 })
 export class Register {
-  nombre: string = '';
   email: string = '';
   usuario: string = '';
   password: string = '';
@@ -33,7 +32,7 @@ export class Register {
   constructor(private router: Router) {}
 
   registrarse(): void {
-    this.router.navigate(['/login']);
+    this.router.navigate(['/translator']);
   }
 
   irAlLogin(): void {

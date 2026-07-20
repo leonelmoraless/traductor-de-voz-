@@ -9,6 +9,11 @@
 
     <div class="change-password-fields">
       <p-floatlabel variant="in">
+        <input pInputText id="email" type="email" [(ngModel)]="email" />
+        <label for="email">Email</label>
+      </p-floatlabel>
+
+      <p-floatlabel variant="in">
         <p-password [(ngModel)]="passwordAnterior" [toggleMask]="true" autocomplete="off" />
         <label for="passwordAnterior">Contraseña actual</label>
       </p-floatlabel>
@@ -16,14 +21,10 @@
       <p-floatlabel variant="in">
         <p-password [(ngModel)]="passwordNueva" [toggleMask]="true" autocomplete="off" />
         
-        <label for="passwordNueva">Contraseña nueva</label>
+        <label for="passwordNueva">Nueva contraseña</label>
       </p-floatlabel>
 
-      <p-floatlabel variant="in">
-        <p-password [(ngModel)]="confirmPassword" [toggleMask]="true" autocomplete="off" />
-        
-        <label for="confirmPassword">Confirmar contraseña nueva</label>
-      </p-floatlabel>
+      
     </div>
 
     <div class="change-password-buttons">

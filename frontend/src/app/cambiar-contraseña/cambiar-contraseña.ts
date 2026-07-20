@@ -21,17 +21,17 @@ import { DividerModule } from 'primeng/divider';
   styleUrl: './cambiar-contraseña.scss',
 })
 export class CambiarContraseña {
+  email: string = '';
   passwordAnterior: string = '';
   passwordNueva: string = '';
-  confirmPassword: string = '';
 
   constructor(private router: Router) {}
 
   cambiarContrasena(): void {
-    this.router.navigate(['/translator']);
+    this.router.navigate(['/login']);
   }
 
   volver(): void {
-    this.router.navigate(['/translator']);
+    this.router.navigate(['/login']);
   }
 }

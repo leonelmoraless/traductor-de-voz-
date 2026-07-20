@@ -58,7 +58,7 @@
     @if (isProcessing()) {
       <div class="processing-indicator">
         <p-progressSpinner styleClass="processing-spinner" strokeWidth="4" />
-        <span class="processing-text">Analizando con Whisper AI...</span>
+        
       </div>
     }
   </div>
@@ -103,7 +103,7 @@
         <p class="transcript-text fade-in">{{ transcripcion() }}</p>
       } @else {
         <p class="transcript-text placeholder">
-          @if (isListening()) { 🎙️ Escuchando... }
+          @if (isListening()) { Esperando entrada de voz... }
           @else if (isProcessing()) { ⏳ Transcribiendo... }
           @else { Esperando entrada de voz... }
         </p>
