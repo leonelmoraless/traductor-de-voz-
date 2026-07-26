@@ -1,6 +1,7 @@
 import { Component, inject, signal, computed, OnDestroy, ElementRef, ViewChild, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
@@ -34,8 +35,8 @@ export class VoiceTranslator implements OnDestroy {
 
   // ─── Estado reactivo ───────────────────────────────────────────────────────
   readonly state         = signal<RecordingState>('idle');
-  readonly transcripcion = signal('');
-  readonly traduccion    = signal('');
+  readonly transcripcion = signal<string>('');
+  readonly traduccion    = signal<string>('');
   readonly errorMessage  = signal('');
   readonly detectedLang  = signal<string | null>(null);
   readonly resultTarget  = signal<string | null>(null);
@@ -43,10 +44,15 @@ export class VoiceTranslator implements OnDestroy {
   ratingValue = 0;
   private subs: Subscription[] = [];
 
+  // Variables de audio para reproducción secuencial (intérprete simultáneo)
+  private currentAudio: HTMLAudioElement | null = null;
+  private audioQueue: string[] = [];
+  private isPlayingQueue = false;
+  private readonly WAVE_BARS = 32;
+
   // Animación de ondas
   private volumeLevel = 0;
   private waveAnimId: number | null = null;
-  private readonly WAVE_BARS = 32;
 
   // ─── Configuración de Idiomas ──────────────────────────────────────────────
   readonly languages: Language[] = [
@@ -78,11 +84,11 @@ export class VoiceTranslator implements OnDestroy {
   });
 
   readonly inputStatusLabel = computed(() =>
-    ({ idle: 'En espera', listening: 'Escuchando', processing: 'Procesando', done: 'Listo', error: 'Error' }[this.state()])
+    ({ idle: 'En espera', listening: 'Escuchando', meeting: 'Reunión', processing: 'Procesando', error: 'Error' }[this.state()])
   );
 
   readonly inputStatusSeverity = computed<'secondary' | 'warn' | 'success' | 'danger'>(() =>
-    ({ idle: 'secondary', listening: 'warn', processing: 'warn', done: 'success', error: 'danger' }[this.state()] as any)
+    ({ idle: 'secondary', listening: 'warn', meeting: 'success', processing: 'warn', error: 'danger' }[this.state()] as any)
   );
 
   // ─── Acciones públicas ─────────────────────────────────────────────────────
@@ -119,7 +125,19 @@ export class VoiceTranslator implements OnDestroy {
 
       this._subscribeToWsMessages();
 
-      await this.audioRecorder.startRecording();
+      await this.audioRecorder.startRecording(this.sourceLang.code);
+
+      this.subs.push(
+        this.wsTranslator.connectionStatus$.subscribe(status => {
+          if (status === 'disconnected') {
+            if (this.state() !== 'idle') {
+              this.state.set('idle');
+              this.setError('Conexión perdida con el servidor.');
+              this.audioRecorder.fullyStop();
+            }
+          }
+        })
+      );
 
       this.subs.push(
         this.audioRecorder.onVolumeLevel$.subscribe(vol => {
@@ -128,9 +146,23 @@ export class VoiceTranslator implements OnDestroy {
       );
 
       this.subs.push(
+        this.audioRecorder.onPartialTranscript$.subscribe((text) => {
+          this.transcripcion.set(text);
+        })
+      );
+
+      this.subs.push(
+        this.audioRecorder.onPartialTranscript$.pipe(
+          debounceTime(500)
+        ).subscribe((text) => {
+          this.wsTranslator.send({ type: 'translate_text', text: text });
+        })
+      );
+
+      this.subs.push(
         this.audioRecorder.onUtteranceReady$.subscribe((blob) => {
           this.ngZone.run(() => this.state.set('processing'));
-          this.wsTranslator.sendAudioUtterance(blob);
+          this.wsTranslator.sendEndUtterance(blob);
         })
       );
 
@@ -145,6 +177,25 @@ export class VoiceTranslator implements OnDestroy {
     this.subs.push(
       this.wsTranslator.messages$.subscribe((msg: WsMessage) => {
         switch (msg.type) {
+          case 'partial_translation_result':
+            if ((msg as any).traduccion) {
+              this.traduccion.set((msg as any).traduccion);
+            }
+            break;
+
+          case 'partial_audio':
+            if ((msg as any).audio_base64) {
+              this.queueAudio((msg as any).audio_base64);
+            }
+            break;
+
+          case 'meeting_result':
+            this.transcripcion.set(msg.transcripcion);
+            this.traduccion.set(msg.traduccion);
+            this.detectedLang.set(msg.source_lang ?? null);
+            this.resultTarget.set(msg.target_lang ?? null);
+            break;
+
           case 'translation_result':
             this.transcripcion.set(msg.transcripcion);
             this.traduccion.set(msg.traduccion);
@@ -170,11 +221,57 @@ export class VoiceTranslator implements OnDestroy {
     );
   }
 
+  // ─── Reproducción de Audio (Cola y Final) ──────────────────────────────
+
+  private queueAudio(base64: string): void {
+    this.audioQueue.push(base64);
+    this.playNextAudio();
+  }
+
+  private playNextAudio(): void {
+    if (this.isPlayingQueue || this.audioQueue.length === 0) return;
+    this.isPlayingQueue = true;
+    
+    const base64 = this.audioQueue.shift();
+    if (!base64) {
+      this.isPlayingQueue = false;
+      return;
+    }
+
+    this.currentAudio = new Audio('data:audio/mp3;base64,' + base64);
+    this.audioRecorder.setMuted(true);
+    this.currentAudio.onended = () => {
+      this.audioRecorder.setMuted(false);
+      this.isPlayingQueue = false;
+      this.playNextAudio();
+    };
+    this.currentAudio.play().catch(e => {
+      console.error('Error reproduciendo chunk de audio:', e);
+      this.audioRecorder.setMuted(false);
+      this.isPlayingQueue = false;
+      this.playNextAudio();
+    });
+  }
+
   private playAudio(base64: string): void {
-    const audio = new Audio(`data:audio/mp3;base64,${base64}`);
-    audio.play().catch(() =>
-      console.warn('[VoiceTranslator] Autoplay bloqueado por el navegador.')
-    );
+    // Al reproducir el audio final completo, vaciamos la cola parcial
+    this.audioQueue = [];
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+    }
+    this.currentAudio = new Audio('data:audio/mp3;base64,' + base64);
+    
+    this.audioRecorder.setMuted(true);
+    
+    this.currentAudio.onended = () => { 
+      this.audioRecorder.setMuted(false);
+      this.isPlayingQueue = false; 
+    };
+    this.isPlayingQueue = true;
+    this.currentAudio.play().catch(e => {
+      this.audioRecorder.setMuted(false);
+      console.error('Error audio final:', e);
+    });
   }
 
   private async stopAll(): Promise<void> {

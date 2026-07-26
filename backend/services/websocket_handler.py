@@ -1,13 +1,5 @@
 """
-WebSocket handler para sesión de traducción bidireccional.
-
-Diseño de robustez:
-  - Un Lock por sesión garantiza que solo se procesa 1 audio a la vez.
-    Si llegan más audios mientras Whisper trabaja, se descartan para
-    evitar colas que saturen el backend.
-  - Un flag `_closed` detecta desconexión y aborta envíos tardíos.
-  - Todos los send_json están blindados contra WebSocket cerrado,
-    sin importar el tipo de excepción.
+WebSocket handler para sesión de traducción bidireccional (Streaming).
 """
 
 import asyncio
@@ -16,18 +8,17 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import WebSocket, WebSocketDisconnect
+from deep_translator import GoogleTranslator
 
 from services.transcription import transcribe
 from services.translation import translate
 from services.tts import synthesize
 
-_executor = ThreadPoolExecutor(max_workers=2)
+_executor = ThreadPoolExecutor(max_workers=5)
 
-
-async def _run_in_thread(fn, *args):
+async def _run_in_thread(fn, *args, **kwargs):
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_executor, fn, *args)
-
+    return await loop.run_in_executor(_executor, lambda: fn(*args, **kwargs))
 
 async def _safe_send(websocket: WebSocket, payload: dict, closed_flag: list) -> None:
     """Envía un mensaje JSON solo si la conexión sigue abierta."""
@@ -36,9 +27,7 @@ async def _safe_send(websocket: WebSocket, payload: dict, closed_flag: list) -> 
     try:
         await websocket.send_json(payload)
     except Exception:
-        # Conexión ya cerrada por el cliente — ignorar silenciosamente
         closed_flag[0] = True
-
 
 async def handle_ws_session(websocket: WebSocket) -> None:
     await websocket.accept()
@@ -47,36 +36,106 @@ async def handle_ws_session(websocket: WebSocket) -> None:
     lang1 = "es"
     lang2 = "en"
 
-    # Flag mutable para saber si el WebSocket fue cerrado
     closed = [False]
-
-    # Lock: solo se procesa un audio a la vez; los extras se descartan
     processing_lock = asyncio.Lock()
+    
+    # Cola inteligente para no ahogar la CPU con meeting_chunks
+    chunk_queue = asyncio.Queue(maxsize=1)
+    
+    async def process_chunks_loop():
+        while not closed[0]:
+            try:
+                # Esperamos un audio
+                audio_bytes = await chunk_queue.get()
+                if closed[0]:
+                    break
+                    
+                # Procesar el chunk más reciente
+                text, detected_lang = await _run_in_thread(transcribe, audio_bytes, [lang1, lang2])
+                print(f"[WS Meeting] Detectado: {detected_lang!r} | Texto: {text!r}")
+
+                if text and re.search(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜäöüßÄÖÜ]', text):
+                    target_lang = lang2
+                    if detected_lang == lang2:
+                        target_lang = lang1
+
+                    traduccion = await _run_in_thread(translate, text, detected_lang, target_lang)
+                    print(f"[WS Meeting] Traducción: {traduccion!r}")
+
+                    await _safe_send(websocket, {
+                        "type":          "meeting_result",
+                        "transcripcion": text,
+                        "traduccion":    traduccion,
+                        "source_lang":   detected_lang,
+                        "target_lang":   target_lang,
+                    }, closed)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"[WS Meeting Loop] Error ignorado: {e}")
+                pass
+                
+    loop_task = asyncio.create_task(process_chunks_loop())
 
     try:
         while True:
             message = await websocket.receive_json()
             msg_type = message.get("type")
 
-            # ── Configuración de Sesión ───────────────────────────────────────
             if msg_type == "config":
                 lang1 = message.get("lang1", "es")
                 lang2 = message.get("lang2", "en")
-                print(f"[WS] Configuración recibida: {lang1} ↔ {lang2}")
+                print(f"[WS] Config: {lang1} ↔ {lang2}")
 
-            # ── Frase de Audio ────────────────────────────────────────────────
-            elif msg_type == "audio_utterance":
+            elif msg_type == "meeting_chunk":
+                if "data" not in message: continue
                 audio_bytes = base64.b64decode(message["data"])
-                print(f"[WS] Audio recibido ({len(audio_bytes)} bytes)")
+                if chunk_queue.full():
+                    try:
+                        chunk_queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        pass
+                chunk_queue.put_nowait(audio_bytes)
 
-                # Si ya estamos procesando otro audio, descartar este
-                if processing_lock.locked():
-                    print("[WS] Descartando audio: ya hay uno en proceso.")
+            elif msg_type == "translate_text":
+                text_to_translate = message.get("text", "")
+                if text_to_translate.strip():
+                    try:
+                        print(f"[WS] translate_text recibido: {text_to_translate!r}")
+                        traduccion = await _run_in_thread(
+                            GoogleTranslator(source=lang1, target=lang2).translate, text_to_translate
+                        )
+                        await _safe_send(websocket, {
+                            "type": "partial_translation_result",
+                            "traduccion": traduccion
+                        }, closed)
+                    except Exception as e:
+                        print(f"[WS] Error en translate_text: {e}")
+
+            elif msg_type == "translate_and_speak_chunk":
+                chunk = message.get("text", "")
+                if chunk.strip():
+                    try:
+                        print(f"[WS] translate_and_speak_chunk recibido: {chunk!r}")
+                        traduccion = await _run_in_thread(
+                            GoogleTranslator(source=lang1, target=lang2).translate, chunk
+                        )
+                        audio_b64 = await _run_in_thread(synthesize, traduccion, lang2)
+                        await _safe_send(websocket, {
+                            "type": "partial_audio",
+                            "audio_base64": audio_b64
+                        }, closed)
+                    except Exception as e:
+                        print(f"[WS] Error en TTS simultáneo: {e}")
+
+            elif msg_type == "end_utterance":
+                print("[WS] Mensaje end_utterance recibido")
+                if "data" not in message:
                     continue
+                audio_bytes = base64.b64decode(message["data"])
 
-                # Lanzar el procesamiento en background sin bloquear el loop
                 asyncio.create_task(
-                    _process_audio(
+                    _process_final(
                         websocket, audio_bytes,
                         lang1, lang2,
                         processing_lock, closed
@@ -89,9 +148,11 @@ async def handle_ws_session(websocket: WebSocket) -> None:
     except Exception as exc:
         closed[0] = True
         print(f"[WS] Error inesperado en sesión: {exc}")
+    finally:
+        loop_task.cancel()
 
 
-async def _process_audio(
+async def _process_final(
     websocket: WebSocket,
     audio_bytes: bytes,
     lang1: str,
@@ -99,49 +160,35 @@ async def _process_audio(
     lock: asyncio.Lock,
     closed: list,
 ) -> None:
-    """Procesa un único fragmento de audio: transcribe → traduce → TTS → envía."""
-
     async with lock:
         if closed[0]:
             return
 
         try:
-            # 1. Transcribir con pista de idiomas (más rápido que auto-detect global)
-            text, detected_lang = await _run_in_thread(
-                transcribe, audio_bytes, [lang1, lang2]
-            )
-            print(f"[WS] Whisper detectó: {detected_lang!r} | Texto: {text!r}")
+            text, detected_lang = await _run_in_thread(transcribe, audio_bytes, [lang1, lang2])
+            print(f"[WS Final] Detectado: {detected_lang!r} | Texto: {text!r}")
 
-            # 2. Validar contenido legible
             if not re.search(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜäöüßÄÖÜ]', text):
-                print("[WS] Texto sin contenido legible — descartando.")
                 await _safe_send(websocket, {
                     "type": "no_speech",
                     "message": "No se entendió el audio. ¿Puedes repetirlo?"
                 }, closed)
                 return
 
-            # 3. Verificar idioma permitido
             if detected_lang not in (lang1, lang2):
-                print(f"[WS] Idioma '{detected_lang}' fuera de los seleccionados ({lang1}, {lang2}) — descartando.")
                 await _safe_send(websocket, {
                     "type": "no_speech",
-                    "message": f"Detecté un idioma diferente al seleccionado. Por favor habla en {lang1} o {lang2}."
+                    "message": f"Idioma diferente al seleccionado. Por favor habla en {lang1} o {lang2}."
                 }, closed)
                 return
 
-            # 4. Determinar idioma destino (bidireccional estricto)
             target_lang = lang2 if detected_lang == lang1 else lang1
-            print(f"[WS] Traduciendo {detected_lang!r} → {target_lang!r}")
 
-            # 5. Traducir
             traduccion = await _run_in_thread(translate, text, detected_lang, target_lang)
-            print(f"[WS] Traducción: {traduccion!r}")
+            print(f"[WS Final] Traducción: {traduccion!r}")
 
-            # 6. TTS
             audio_b64 = await _run_in_thread(synthesize, traduccion, target_lang)
 
-            # 7. Enviar resultado
             await _safe_send(websocket, {
                 "type":          "translation_result",
                 "transcripcion": text,
@@ -151,15 +198,8 @@ async def _process_audio(
                 "audio_base64":  audio_b64,
             }, closed)
 
-        except ValueError as ve:
-            msg = str(ve)
-            print(f"[WS] ValueError en proceso: {msg}")
-            user_msg = "No se detectó voz válida. ¿Puedes repetirlo?"
-            await _safe_send(websocket, {"type": "no_speech", "message": user_msg}, closed)
-
+        except ValueError:
+            await _safe_send(websocket, {"type": "no_speech", "message": "No se detectó voz válida."}, closed)
         except Exception as exc:
-            print(f"[WS] Error procesando frase: {exc}")
-            await _safe_send(websocket, {
-                "type": "error",
-                "message": "Error interno al procesar el audio."
-            }, closed)
+            print(f"[WS Final] Error: {exc}")
+            await _safe_send(websocket, {"type": "error", "message": "Error procesando el audio final."}, closed)
