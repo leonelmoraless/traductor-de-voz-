@@ -4,37 +4,31 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule } from '@angular/forms';
 import { FloatLabelModule } from 'primeng/floatlabel';
-import { PasswordModule } from 'primeng/password';
-import { CheckboxModule } from 'primeng/checkbox';
 
 @Component({
-  selector: 'app-register',
+  selector: 'app-recuperar-contrasena',
   imports: [
     RouterModule,
     ButtonModule,
     FormsModule,
     FloatLabelModule,
-    InputTextModule,
-    PasswordModule,
-    CheckboxModule,
+    InputTextModule
   ],
-  templateUrl: './register.html',
-  styleUrl: './register.scss',
+  templateUrl: './recuperar-contrasena.html',
+  styleUrl: './recuperar-contrasena.scss',
 })
-export class Register {
+export class RecuperarContrasena {
   email: string = '';
-  usuario: string = '';
-  password: string = '';
-  confirmPassword: string = '';
-  terminos: boolean = false;
 
   constructor(private router: Router) {}
 
-  registrarse(): void {
-    this.router.navigate(['/translator']);
+  enviarCorreo(): void {
+    // Aquí iría la lógica para enviar el correo de recuperación
+    console.log('Correo de recuperación enviado a:', this.email);
+    this.router.navigate(['/recuperar-contrasena']);
   }
 
-  irAlLogin(): void {
+  volver(): void {
     this.router.navigate(['/login']);
   }
 }

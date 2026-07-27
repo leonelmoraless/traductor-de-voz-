@@ -1,0 +1,114 @@
+<div class="auth-layout">
+
+  <!-- ═══════════════════════════════════════
+       PANEL IZQUIERDO — Branding
+  ═══════════════════════════════════════ -->
+  <div class="auth-left">
+    <!-- Logo -->
+    <div class="auth-left-logo">
+      <div class="auth-left-icon">
+        <i class="pi pi-microphone"></i>
+      </div>
+      <span class="auth-left-brand">Voice Translator</span>
+    </div>
+
+    <!-- Hero -->
+    <div class="auth-left-body">
+      <p class="auth-left-eyebrow">Recuperación</p>
+      <h2 class="auth-left-title">
+        No te quedes<br>
+        sin tu<br>
+        <span>cuenta.</span>
+      </h2>
+      <p class="auth-left-desc">
+        Ingresa tu correo electrónico asociado y te enviaremos
+        un enlace seguro para que puedas recuperar el acceso.
+      </p>
+
+      <ul class="auth-features">
+        <li class="auth-feature-item">
+          <div class="auth-feature-icon"><i class="pi pi-envelope"></i></div>
+          <div class="auth-feature-text">
+            <strong>Revisa tu bandeja</strong>
+            <span>Te enviaremos las instrucciones por correo</span>
+          </div>
+        </li>
+        <li class="auth-feature-item">
+          <div class="auth-feature-icon"><i class="pi pi-shield"></i></div>
+          <div class="auth-feature-text">
+            <strong>Enlace seguro</strong>
+            <span>Generaremos un token único de recuperación</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Footer del panel -->
+    <div class="auth-left-footer">
+      <div class="auth-left-footer-dot"></div>
+      <span class="auth-left-footer-text">© 2026 Voice Translator · Todos los derechos reservados</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       PANEL DERECHO — Formulario
+  ═══════════════════════════════════════ -->
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+
+      <!-- Encabezado -->
+      <div class="auth-form-header">
+        <p class="auth-form-eyebrow">Recuperar acceso</p>
+        <h1 class="auth-form-title">Recuperar contraseña</h1>
+        <p class="auth-form-subtitle">Ingresa tu correo para recibir una nueva contraseña</p>
+      </div>
+
+      <!-- Campos -->
+      <div class="auth-fields">
+
+        <!-- Email -->
+        <p-floatlabel variant="in" style="width: 100%; display: block;">
+          <input
+            pInputText
+            id="rec-email"
+            type="email"
+            [(ngModel)]="email"
+            autocomplete="email"
+            style="width: 100%; display: block;"
+          />
+          <label for="rec-email">Correo electrónico</label>
+        </p-floatlabel>
+
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="auth-actions-row">
+        <p-button
+          label="Cancelar"
+          styleClass="auth-btn-cancel"
+          [outlined]="true"
+          (onClick)="volver()"
+          id="btn-cancelar"
+        />
+        <p-button
+          label="Enviar correo"
+          icon="pi pi-send"
+          iconPos="right"
+          styleClass="auth-btn-save"
+          (onClick)="enviarCorreo()"
+          id="btn-enviar"
+        />
+      </div>
+
+      <!-- Volver al login -->
+      <div class="auth-footer" style="margin-top: 20px;">
+        <button class="auth-footer-link" (click)="volver()" id="link-back-login">
+          <i class="pi pi-arrow-left" style="font-size: 0.75rem; margin-right: 4px;"></i>
+          Volver al inicio de sesión
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
