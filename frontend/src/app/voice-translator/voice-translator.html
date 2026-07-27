@@ -1,31 +1,26 @@
 <div class="translator-wrapper">
 
-  <!-- ─── SUBHEADER ──────────────────────────────────────────────────────── -->
-  <div class="translator-subheader">
-    <span class="header-subtitle">
-      {{ sourceLang.flag }} {{ sourceLang.name }} → {{ targetLang.flag }} {{ targetLang.name }}
-    </span>
-    <div class="header-buttons">
-      <p-button label="Ver Planes" icon="pi pi-crown" severity="info"
-        [outlined]="true" size="small" (onClick)="verPlanes()" />
-      <p-button label="Cerrar sesión" icon="pi pi-sign-out" severity="secondary"
-        [outlined]="true" size="small" (onClick)="cerrarSesion()" />
-    </div>
-  </div>
-
-  <!-- ─── LANGUAGE SELECTOR ─────────────────────────────────────────────── -->
+  <!-- ─── LANGUAGE SELECTOR (Custom con Modal) ────────────────────────────── -->
   <div class="language-bar-container">
     <div class="language-bar">
-      <p-select [options]="languages" [(ngModel)]="sourceLang" (ngModelChange)="onConfigChange()" optionLabel="name"
-        placeholder="Idioma de entrada" styleClass="lang-select" [disabled]="!isIdle()" />
+      <!-- Source Lang -->
+      <button class="lang-btn" (click)="openLangModal('source')" [disabled]="!isIdle()">
+        <span class="lang-code">{{ sourceLang.code | uppercase }}</span>
+        <span class="lang-name">{{ sourceLang.name }}</span>
+        <i class="pi pi-angle-down ml-1"></i>
+      </button>
 
-      <p-button icon="pi pi-arrow-right-arrow-left" [rounded]="true" severity="secondary"
-        [outlined]="true" size="small" pTooltip="Intercambiar idiomas"
-        [disabled]="!isIdle()" (onClick)="swapLanguages()" />
+      <!-- Flecha bidireccional estática (deshabilitada) -->
+      <button class="icon-btn static-arrow" title="Traducción bidireccional">
+        <i class="pi pi-arrow-right-arrow-left"></i>
+      </button>
 
-      <p-select [options]="languages" [(ngModel)]="targetLang" (ngModelChange)="onConfigChange()" optionLabel="name"
-        placeholder="Idioma de salida" styleClass="lang-select" [disabled]="!isIdle()" />
-
+      <!-- Target Lang -->
+      <button class="lang-btn" (click)="openLangModal('target')" [disabled]="!isIdle()">
+        <span class="lang-name">{{ targetLang.name }}</span>
+        <span class="lang-code ml-1">{{ targetLang.code | uppercase }}</span>
+        <i class="pi pi-angle-down ml-1"></i>
+      </button>
     </div>
   </div>
 
@@ -33,6 +28,7 @@
   <div class="mic-section">
     <!-- Botón Micrófono -->
     <button class="mic-btn"
+      [disabled]="isProcessing()"
       [class.mic-btn--active]="isListening()"
       [class.mic-btn--processing]="isProcessing()"
       [class.mic-btn--error]="isError()"
@@ -41,29 +37,28 @@
       <i [class]="isListening() || isProcessing() ? 'pi pi-stop-circle' : 'pi pi-microphone'"></i>
     </button>
 
-    <!-- Animación de Ondas (Canvas) -->
+    <!-- Info del micrófono -->
+    <div class="mic-info">
+      <p class="mic-main-label" [class.recording-label]="isListening() || isProcessing()">
+        {{ micMainLabel() }}
+      </p>
+      @if (micSubLabel()) {
+        <p class="mic-sub-label">{{ micSubLabel() }}</p>
+      }
+    </div>
+
+    <!-- Animación de Ondas -->
     @if (isListening() || isProcessing()) {
       <div class="wave-container fade-in">
-        <canvas #waveCanvas width="280" height="64"></canvas>
+        <canvas #waveCanvas width="200" height="48"></canvas>
       </div>
-    }
-
-    <p class="mic-main-label" [class.recording-label]="isListening() || isProcessing()">
-      {{ micMainLabel() }}
-    </p>
-
-    @if (micSubLabel()) {
-      <p class="mic-sub-label">{{ micSubLabel() }}</p>
     }
 
     @if (isProcessing()) {
       <div class="processing-indicator fade-in">
-        <div class="flex items-center gap-3 text-blue-500 bg-blue-50/50 px-4 py-2 rounded-full shadow-sm border border-blue-100">
-          <span class="relative flex h-3 w-3">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-          </span>
-          <span class="text-sm font-medium animate-pulse">Traduciendo...</span>
+        <div class="proc-badge">
+          <span class="proc-dot"></span>
+          <span>Traduciendo...</span>
         </div>
       </div>
     }
@@ -86,7 +81,7 @@
     </div>
   }
 
-  <!-- ─── TEXT PANELS ───────────────────────────────────────────────────── -->
+  <!-- ─── TEXT PANELS (Diseño Original Horizontal) ─────────────────────── -->
   <div class="panels-row">
 
     <!-- Entrada / Transcripción -->
@@ -116,9 +111,9 @@
       }
     </p-card>
 
-    <!-- Flecha -->
+    <!-- Flecha central -->
     <div class="arrow-divider">
-      <p-button icon="pi pi-arrow-right" [rounded]="true" severity="primary" [disabled]="true" />
+      <div class="arrow-icon"><i class="pi pi-angle-double-right"></i></div>
     </div>
 
     <!-- Salida / Traducción -->
@@ -148,11 +143,86 @@
     </p-card>
 
   </div>
-
-  <!-- ─── RATING ─────────────────────────────────────────────────────────── -->
-  <div class="rating-section">
-    <p class="rating-label">Califica la aplicación:</p>
-    <p-rating [(ngModel)]="ratingValue" />
-  </div>
-
 </div>
+
+<!-- ─── MODAL SELECCIÓN DE IDIOMAS (PrimeNG Dialog) ─────────────────── -->
+<p-dialog 
+  [(visible)]="showLangModal" 
+  [modal]="true" 
+  [draggable]="false"
+  [resizable]="false"
+  [showHeader]="false"
+  styleClass="lang-dialog"
+  [closeOnEscape]="true"
+  [dismissableMask]="true">
+  
+  <div class="lang-modal-content">
+    <div class="modal-header">
+      <h2>Idioma {{ modalSide === 'source' ? 'origen' : 'del otro usuario' }}</h2>
+      <button class="close-btn" (click)="showLangModal = false"><i class="pi pi-times"></i></button>
+    </div>
+
+    <div class="search-box">
+      <i class="pi pi-search"></i>
+      <input type="text" pInputText placeholder="Buscar idioma..." [(ngModel)]="searchQuery" />
+    </div>
+
+    <div class="modal-body">
+      <!-- Recientes -->
+      @if(!searchQuery) {
+        <div class="section-title">RECIENTES</div>
+        <div class="recent-pills">
+          <button class="pill" (click)="selectLanguage(languages[0])">Español</button>
+          <button class="pill active" (click)="selectLanguage(languages[1])">Inglés</button>
+          <button class="pill" (click)="selectLanguage(languages[2])">Francés</button>
+        </div>
+      }
+
+      <div class="section-title mt-4">TODOS LOS IDIOMAS</div>
+      <div class="lang-list">
+        @for(lang of filteredLanguages(); track lang.code) {
+          <button class="lang-item" 
+            [class.selected]="(modalSide === 'source' ? sourceLang.code : targetLang.code) === lang.code"
+            (click)="selectLanguage(lang)">
+            <span class="lang-code-box">{{ lang.code | uppercase }}</span>
+            <span class="lang-name-text">
+              <span class="font-bold text-gray-500 text-xs mr-2">{{ lang.code | uppercase }}</span>
+              {{ lang.name }}
+            </span>
+            @if((modalSide === 'source' ? sourceLang.code : targetLang.code) === lang.code) {
+              <i class="pi pi-check text-blue-600 ml-auto"></i>
+            }
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+</p-dialog>
+
+<!-- ─── MODAL CALIFICACIÓN DE TRADUCCIÓN ─────────────────────────────── -->
+<p-dialog
+  [(visible)]="showRatingModal"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [showHeader]="false"
+  styleClass="rating-dialog"
+  [closeOnEscape]="true"
+  [dismissableMask]="true">
+
+  <div class="rating-modal-content">
+    <h2>¿Cómo fue la calidad de la traducción?</h2>
+    <p class="rating-subtitle">Tu opinión mejora el servicio para todos.</p>
+
+    <div class="stars-row">
+      <p-rating [(ngModel)]="ratingValue" [stars]="5" />
+    </div>
+
+    <div class="rating-actions">
+      <button class="btn-skip" (click)="skipRating()">Saltar</button>
+      <button class="btn-send" (click)="submitRating()" [disabled]="ratingValue === 0">
+        Enviar valoración
+      </button>
+    </div>
+  </div>
+</p-dialog>

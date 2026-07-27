@@ -1,0 +1,95 @@
+<div class="view-container horizontal-layout">
+  
+  <div class="view-header">
+    <div class="view-icon bg-blue-100 text-blue-700">
+      <i class="pi pi-wifi"></i>
+    </div>
+    <div class="view-title-wrap">
+      <h1>Traductor de Audio Externo</h1>
+      <p>Traduce el audio de otras apps en tiempo real</p>
+    </div>
+  </div>
+
+  <div class="view-content-grid">
+    
+    <!-- Lado Izquierdo: Configuración e Info -->
+    <div class="left-col">
+      <!-- Configuración -->
+      <div class="config-card">
+        <div class="config-header">CONFIGURACIÓN</div>
+        <div class="config-cols">
+          <div class="config-col">
+            <span class="config-label">Idioma origen</span>
+            <div class="config-value text-green-600 font-semibold flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-green-500"></div>
+              Detección automática
+            </div>
+          </div>
+          <div class="config-divider"></div>
+          <div class="config-col text-right">
+            <span class="config-label">Traducir a</span>
+            <div class="config-value">
+              <span class="text-xs text-gray-400 font-bold mr-1">ES</span>
+              <span class="text-blue-700 font-bold cursor-pointer hover:underline">
+                Español <i class="pi pi-angle-down text-sm ml-1"></i>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alerta informativa -->
+      <div class="info-alert">
+        <i class="pi pi-shield info-icon"></i>
+        <p>
+          Una vez activo, puedes <strong>minimizar la app</strong>. VozTraductor traducirá el audio de videos, podcasts o llamadas en segundo plano, sin interrupciones.
+        </p>
+      </div>
+
+      <!-- Main Action Card -->
+      <div class="action-card mt-2">
+        <div class="dashed-indicator">
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <button class="primary-action-btn mt-4" (click)="iniciarTraduccion()">
+          <i class="pi pi-wifi mr-2"></i> Iniciar traducción
+        </button>
+      </div>
+    </div>
+
+    <!-- Lado Derecho: Features -->
+    <div class="right-col">
+      <div class="section-card">
+        <div class="section-header">IDEAL PARA</div>
+        <div class="feature-cards">
+          <div class="feature-card">
+            <div class="feat-icon"><i class="pi pi-youtube"></i></div>
+            <div class="feat-text">
+              <h4>Videos en línea</h4>
+              <p>YouTube, Netflix, Twitch y más</p>
+            </div>
+          </div>
+          
+          <div class="feature-card">
+            <div class="feat-icon"><i class="pi pi-phone"></i></div>
+            <div class="feat-text">
+              <h4>Videollamadas</h4>
+              <p>Zoom, Meet, Teams en tiempo real</p>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feat-icon"><i class="pi pi-headphones"></i></div>
+            <div class="feat-text">
+              <h4>Podcasts y radio</h4>
+              <p>Escucha en cualquier idioma</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+
+</div>

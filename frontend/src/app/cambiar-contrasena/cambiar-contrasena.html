@@ -1,0 +1,129 @@
+<div class="auth-layout">
+
+  <!-- Panel Izquierdo — Branding -->
+  <div class="auth-left">
+    <div class="auth-left-logo">
+      <div class="auth-left-icon">
+        <i class="pi pi-lock"></i>
+      </div>
+      <span class="auth-left-brand">Voice Translator</span>
+    </div>
+
+    <div class="auth-left-body">
+      <p class="auth-left-eyebrow">Seguridad de cuenta</p>
+      <h2 class="auth-left-title">
+        Protege<br>
+        tu cuenta<br>
+        <span>con seguridad.</span>
+      </h2>
+      <p class="auth-left-desc">
+        Actualiza tu contraseña con regularidad para mantener tu cuenta segura y protegida.
+      </p>
+
+      <ul class="auth-features">
+        <li class="auth-feature-item">
+          <div class="auth-feature-icon"><i class="pi pi-shield"></i></div>
+          <div class="auth-feature-text">
+            <strong>Encriptación segura</strong>
+            <span>Tu contraseña se almacena de forma cifrada</span>
+          </div>
+        </li>
+        <li class="auth-feature-item">
+          <div class="auth-feature-icon"><i class="pi pi-key"></i></div>
+          <div class="auth-feature-text">
+            <strong>Verificación de identidad</strong>
+            <span>Confirma tu contraseña actual antes de cambiarla</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="auth-left-footer">
+      <div class="auth-left-footer-dot"></div>
+      <span class="auth-left-footer-text">© 2026 Voice Translator · Todos los derechos reservados</span>
+    </div>
+  </div>
+
+  <!-- Panel Derecho — Formulario -->
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+
+      <div class="auth-form-header">
+        <p class="auth-form-eyebrow">Seguridad</p>
+        <h1 class="auth-form-title">Cambiar contraseña</h1>
+        <p class="auth-form-subtitle">Introduce tu contraseña actual y define una nueva</p>
+      </div>
+
+      <div class="auth-fields">
+        <!-- Contraseña actual -->
+        <p-floatlabel variant="in" style="width: 100%; display: block;">
+          <p-password
+            inputId="password-actual"
+            [(ngModel)]="contrasenaActual"
+            [toggleMask]="true"
+            [style]="{'width': '100%', 'display': 'block'}"
+            [inputStyle]="{'width': '100%', 'display': 'block'}"
+          />
+          <label for="password-actual">Contraseña actual</label>
+        </p-floatlabel>
+
+        <!-- Nueva contraseña CON medidor -->
+        <p-floatlabel variant="in" style="width: 100%; display: block;">
+          <p-password
+            inputId="nueva-password"
+            [(ngModel)]="nuevaContrasena"
+            [toggleMask]="true"
+            [style]="{'width': '100%', 'display': 'block'}"
+            [inputStyle]="{'width': '100%', 'display': 'block'}"
+          />
+          <label for="nueva-password">Nueva contraseña</label>
+        </p-floatlabel>
+
+        <!-- Confirmar nueva contraseña -->
+        <p-floatlabel variant="in" style="width: 100%; display: block;">
+          <p-password
+            inputId="confirmar-password"
+            [(ngModel)]="confirmarContrasena"
+            [toggleMask]="true"
+            [style]="{'width': '100%', 'display': 'block'}"
+            [inputStyle]="{'width': '100%', 'display': 'block'}"
+          />
+          <label for="confirmar-password">Confirmar nueva contraseña</label>
+        </p-floatlabel>
+      </div>
+
+      <!-- Mensajes de error / éxito -->
+      @if (mensajeError) {
+        <div class="msg msg-error">
+          <i class="pi pi-exclamation-circle"></i>
+          {{ mensajeError }}
+        </div>
+      }
+      @if (mensajeExito) {
+        <div class="msg msg-success">
+          <i class="pi pi-check-circle"></i>
+          {{ mensajeExito }}
+        </div>
+      }
+
+      <!-- Acciones -->
+      <div class="auth-actions-row">
+        <p-button
+          label="Volver"
+          severity="secondary"
+          [outlined]="true"
+          styleClass="auth-btn-cancel"
+          (onClick)="volver()"
+        />
+        <p-button
+          label="Guardar cambios"
+          icon="pi pi-check"
+          iconPos="right"
+          styleClass="auth-btn-save"
+          (onClick)="guardar()"
+        />
+      </div>
+
+    </div>
+  </div>
+</div>

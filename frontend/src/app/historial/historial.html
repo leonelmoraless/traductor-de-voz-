@@ -1,0 +1,37 @@
+<div class="historial-container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <button class="back-btn" (click)="volver()">
+      <i class="pi pi-angle-left"></i>
+    </button>
+    <div class="header-text">
+      <h1>Historial</h1>
+      <p>{{ translations.length }} traducciones recientes</p>
+    </div>
+  </div>
+
+  <!-- Lista de traducciones -->
+  <div class="translations-list">
+    @for (item of translations; track item.id) {
+      <div class="translation-card">
+        <div class="card-meta">
+          <div class="lang-badges">
+            <span class="lang-tag">{{ item.sourceLang }}</span>
+            <i class="pi pi-arrow-right mx-1 text-gray-400 text-xs"></i>
+            <span class="lang-tag">{{ item.targetLang }}</span>
+          </div>
+          <span class="time-ago">{{ item.timeAgo }}</span>
+        </div>
+        <p class="original-text">{{ item.originalText }}</p>
+        <p class="translated-text">{{ item.translatedText }}</p>
+      </div>
+    } @empty {
+      <div class="empty-state">
+        <i class="pi pi-history"></i>
+        <p>No hay traducciones recientes</p>
+      </div>
+    }
+  </div>
+
+</div>

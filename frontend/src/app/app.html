@@ -1,1 +1,40 @@
-<router-outlet />
+<div class="app-container">
+  
+  @if (showNavbar()) {
+    <nav class="top-nav">
+      <div class="nav-content">
+        <div class="nav-brand">
+          <i class="pi pi-microphone"></i>
+          <span>Voice Translator</span>
+        </div>
+        
+        <div class="nav-links">
+          <a routerLink="/translator" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-home"></i>
+            <span>Inicio</span>
+          </a>
+          <a routerLink="/pantalla" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-desktop"></i>
+            <span>Pantalla</span>
+          </a>
+          <a routerLink="/audio" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-wifi"></i>
+            <span>Audio</span>
+          </a>
+          <a routerLink="/planes" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-crown"></i>
+            <span>Planes</span>
+          </a>
+          <a routerLink="/ajustes" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-cog"></i>
+            <span>Ajustes</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+  }
+
+  <main class="main-content" [class.with-nav]="showNavbar()">
+    <router-outlet></router-outlet>
+  </main>
+</div>

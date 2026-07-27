@@ -81,20 +81,13 @@ export class WebsocketTranslatorService {
   }
 
   /**
-   * Avisa al servidor que el usuario dejó de hablar, enviando el audio final.
+   * Avisa al servidor que el usuario dejó de hablar, enviando el texto reconocido.
    */
-  sendEndUtterance(blob: Blob): void {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = () => {
-      const base64data = reader.result as string;
-      const base64String = base64data.split(',')[1];
-      
-      this.send({
-        type: 'end_utterance',
-        data: base64String
-      });
-    };
+  sendTextUtterance(text: string): void {
+    this.send({
+      type: 'text_utterance',
+      text: text
+    });
   }
 
   /**

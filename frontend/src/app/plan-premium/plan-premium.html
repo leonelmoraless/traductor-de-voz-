@@ -1,36 +1,100 @@
-<div class="plans-container">
-  <h1>Planes de Suscripción</h1>
+<div class="planes-container">
 
-  <div class="plans-grid">
-    <p-card>
-      <h3>Plan Básico</h3>
-      <p>$0/mes</p>
-      <ul>
-        <li>10 traducciones/mes</li>
-        <li>Idiomas básicos</li>
-        <li>Soporte por email</li>
-      </ul>
-      <p-button label="Seleccionar" severity="secondary" styleClass="seleccionar1-btn"/>
-    </p-card>
-
-    <p-card>
-      <h3>Plan Pro</h3>
-      <p>$29/mes</p>
-      <ul>
-        <li>Modelos avanzados</li>
-        <li>Traducciones ilimitadas</li>
-        <li>Todos los idiomas</li>
-        <li>Traduccion bilateral</li>
-        <li>Transcripciones con inteligencia artificial</li>
-        <li>Soporte prioritario</li>
-        
-        
-      </ul>
-      <p-button label="Seleccionar" styleClass="seleccionar-btn" />
-    </p-card>
-
-    
+  <!-- Header -->
+  <div class="page-header">
+    <button class="back-btn" (click)="volver()">
+      <i class="pi pi-angle-left"></i>
+    </button>
+    <div class="header-text">
+      <h1>Planes de Suscripción</h1>
+      <p>Elige el plan que mejor se adapte</p>
+    </div>
   </div>
 
-  <p-button label="Volver" severity="secondary" [text]="true" (onClick)="volver()" styleClass="volver-btn" />
+  <!-- Grid de planes -->
+  <div class="plans-grid">
+
+    <!-- Plan Básico -->
+    <div class="plan-card" [class.selected]="planActual === 'basico'">
+      <div class="plan-header">
+        <div class="plan-name-wrap">
+          <h2>Plan Básico</h2>
+        </div>
+        <div class="plan-price">
+          <span class="price-amount">$0</span>
+          <span class="price-period">/mes</span>
+        </div>
+      </div>
+      <p class="plan-desc">Para empezar a explorar</p>
+
+      <ul class="features-list">
+        <li>
+          <i class="pi pi-check-circle feature-icon"></i>
+          <span>10 traducciones/mes</span>
+        </li>
+        <li>
+          <i class="pi pi-check-circle feature-icon"></i>
+          <span>Idiomas básicos (ES, EN)</span>
+        </li>
+        <li>
+          <i class="pi pi-check-circle feature-icon"></i>
+          <span>Soporte por correo</span>
+        </li>
+      </ul>
+
+      <button class="btn-select secondary" (click)="seleccionarBasico()"
+        [class.btn-current]="planActual === 'basico'">
+        {{ planActual === 'basico' ? 'Plan actual' : 'Seleccionar' }}
+      </button>
+    </div>
+
+    <!-- Plan Pro (RECOMENDADO) -->
+    <div class="plan-card pro" [class.selected]="planActual === 'pro'">
+      <div class="recommended-badge">RECOMENDADO</div>
+
+      <div class="plan-header">
+        <div class="plan-name-wrap">
+          <h2>Plan Pro</h2>
+          <span class="pro-badge"><i class="pi pi-star-fill mr-1"></i>PRO</span>
+        </div>
+        <div class="plan-price">
+          <span class="price-amount">$29</span>
+          <span class="price-period">/mes</span>
+        </div>
+      </div>
+      <p class="plan-desc">Para uso profesional e intensivo</p>
+
+      <ul class="features-list">
+        <li>
+          <i class="pi pi-check-circle feature-icon pro"></i>
+          <span>Traducciones ilimitadas</span>
+        </li>
+        <li>
+          <i class="pi pi-check-circle feature-icon pro"></i>
+          <span>Todos los idiomas (+20)</span>
+        </li>
+        <li>
+          <i class="pi pi-check-circle feature-icon pro"></i>
+          <span>Traducción cara a cara</span>
+        </li>
+        <li>
+          <i class="pi pi-check-circle feature-icon pro"></i>
+          <span>Transcripción con IA</span>
+        </li>
+        <li>
+          <i class="pi pi-check-circle feature-icon pro"></i>
+          <span>Pantalla y audio externo</span>
+        </li>
+        <li>
+          <i class="pi pi-check-circle feature-icon pro"></i>
+          <span>Soporte prioritario 24/7</span>
+        </li>
+      </ul>
+
+      <button class="btn-select primary" (click)="seleccionarPro()">
+        Seleccionar Plan Pro
+      </button>
+    </div>
+
+  </div>
 </div>

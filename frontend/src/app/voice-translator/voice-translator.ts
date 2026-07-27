@@ -6,10 +6,12 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { SelectModule } from 'primeng/select';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { RatingModule } from 'primeng/rating';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { RatingModule } from 'primeng/rating';
 
 import { AudioRecorderService } from './services/audio-recorder.service';
 import { WebsocketTranslatorService } from './services/websocket-translator.service';
@@ -20,7 +22,7 @@ import { RecordingState, WsMessage, Language } from './models/translation-result
   imports: [
     CommonModule, FormsModule,
     ButtonModule, CardModule, TagModule, SelectModule,
-    ProgressSpinnerModule, RatingModule,
+    ProgressSpinnerModule, RatingModule, DialogModule, InputTextModule
   ],
   templateUrl: './voice-translator.html',
   styleUrl: './voice-translator.scss',
@@ -41,8 +43,16 @@ export class VoiceTranslator implements OnDestroy {
   readonly detectedLang  = signal<string | null>(null);
   readonly resultTarget  = signal<string | null>(null);
 
-  ratingValue = 0;
   private subs: Subscription[] = [];
+
+  // Modal de Idiomas
+  showLangModal = false;
+  modalSide: 'source' | 'target' = 'source';
+  searchQuery = '';
+
+  // Modal de Calificación de Traducción
+  showRatingModal = false;
+  ratingValue = 0;
 
   // Variables de audio para reproducción secuencial (intérprete simultáneo)
   private currentAudio: HTMLAudioElement | null = null;
@@ -60,10 +70,22 @@ export class VoiceTranslator implements OnDestroy {
     { name: 'Inglés', code: 'en', flag: 'en' },
     { name: 'Francés', code: 'fr', flag: 'fr' },
     { name: 'Alemán', code: 'de', flag: 'de' },
+    { name: 'Portugués', code: 'pt', flag: 'pt' },
+    { name: 'Italiano', code: 'it', flag: 'it' },
+    { name: 'Japonés', code: 'ja', flag: 'ja' },
+    { name: 'Coreano', code: 'ko', flag: 'ko' },
   ];
 
   sourceLang: Language = this.languages[0];
   targetLang: Language = this.languages[1];
+
+  readonly filteredLanguages = computed(() => {
+    const q = this.searchQuery.toLowerCase().trim();
+    if (!q) return this.languages;
+    return this.languages.filter(l =>
+      l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q)
+    );
+  });
 
   // ─── Computed ──────────────────────────────────────────────────────────────
   readonly isIdle       = computed(() => this.state() === 'idle');
@@ -98,18 +120,44 @@ export class VoiceTranslator implements OnDestroy {
       await this.startListening();
     } else {
       await this.stopAll();
+      // Mostrar calificación tras detener el micrófono (como hace WhatsApp)
+      if (this.traduccion()) {
+        setTimeout(() => { this.showRatingModal = true; }, 600);
+      }
     }
   }
 
-  swapLanguages(): void {
+  onConfigChange(): void {
+    this.wsTranslator.sendConfig('manual', this.sourceLang.code, this.targetLang.code);
+  }
+
+  openLangModal(side: 'source' | 'target'): void {
     if (!this.isIdle()) return;
-    [this.sourceLang, this.targetLang] = [this.targetLang, this.sourceLang];
+    this.modalSide = side;
+    this.searchQuery = '';
+    this.showLangModal = true;
+  }
+
+  selectLanguage(lang: Language): void {
+    if (this.modalSide === 'source') {
+      this.sourceLang = lang;
+    } else {
+      this.targetLang = lang;
+    }
+    this.showLangModal = false;
     this.onConfigChange();
   }
 
-  onConfigChange(): void {
-    // Envia la config al backend inmediatamente (si está conectado)
-    this.wsTranslator.sendConfig('manual', this.sourceLang.code, this.targetLang.code);
+  // Modal de calificación de traducción
+  submitRating(): void {
+    console.log('Valoración enviada:', this.ratingValue, 'estrellas');
+    this.showRatingModal = false;
+    this.ratingValue = 0;
+  }
+
+  skipRating(): void {
+    this.showRatingModal = false;
+    this.ratingValue = 0;
   }
 
   // ─── Internos ──────────────────────────────────────────────────────────────
@@ -120,7 +168,6 @@ export class VoiceTranslator implements OnDestroy {
 
     try {
       this.wsTranslator.connect();
-      // Esperar brevemente a que conecte para mandar config inicial
       setTimeout(() => this.onConfigChange(), 500);
 
       this._subscribeToWsMessages();
@@ -160,9 +207,16 @@ export class VoiceTranslator implements OnDestroy {
       );
 
       this.subs.push(
-        this.audioRecorder.onUtteranceReady$.subscribe((blob) => {
-          this.ngZone.run(() => this.state.set('processing'));
-          this.wsTranslator.sendEndUtterance(blob);
+        this.audioRecorder.onUtteranceReady$.subscribe(() => {
+          this.ngZone.run(() => {
+            // Bloquear el micrófono apagándolo por completo para que no haga cola
+            this.audioRecorder.fullyStop();
+            this.state.set('processing');
+            
+            // Usar la transcripción literal que ya hizo el navegador
+            const textToTranslate = this.transcripcion();
+            this.wsTranslator.sendTextUtterance(textToTranslate);
+          });
         })
       );
 
@@ -201,19 +255,29 @@ export class VoiceTranslator implements OnDestroy {
             this.traduccion.set(msg.traduccion);
             this.detectedLang.set(msg.source_lang ?? null);
             this.resultTarget.set(msg.target_lang ?? null);
-            this.state.set('listening');
-            this.playAudio(msg.audio_base64);
+            
+            // Mantener estado 'processing' para que el microfono siga bloqueado
+            // mientras se reproduce el audio
+            this.playAudio(msg.audio_base64, true);
             break;
 
           case 'no_speech':
             this.errorMessage.set(msg.message);
-            this.state.set('listening');
+            if (this.state() === 'processing') {
+              this.startListening();
+            } else {
+              this.state.set('idle');
+            }
             setTimeout(() => this.errorMessage.set(''), 4000);
             break;
 
           case 'error':
             this.errorMessage.set(msg.message ?? 'Error desconocido.');
-            this.state.set('listening');
+            if (this.state() === 'processing') {
+              this.startListening();
+            } else {
+              this.state.set('idle');
+            }
             setTimeout(() => this.errorMessage.set(''), 5000);
             break;
         }
@@ -231,7 +295,7 @@ export class VoiceTranslator implements OnDestroy {
   private playNextAudio(): void {
     if (this.isPlayingQueue || this.audioQueue.length === 0) return;
     this.isPlayingQueue = true;
-    
+
     const base64 = this.audioQueue.shift();
     if (!base64) {
       this.isPlayingQueue = false;
@@ -253,24 +317,57 @@ export class VoiceTranslator implements OnDestroy {
     });
   }
 
-  private playAudio(base64: string): void {
-    // Al reproducir el audio final completo, vaciamos la cola parcial
+  private playAudio(base64: string, autoResume: boolean = false): void {
     this.audioQueue = [];
     if (this.currentAudio) {
       this.currentAudio.pause();
     }
-    this.currentAudio = new Audio('data:audio/mp3;base64,' + base64);
     
+    if (!base64 || base64.trim().length === 0) {
+      console.warn('Audio vacío recibido, omitiendo reproducción.');
+      if (autoResume && this.state() === 'processing') {
+        this.startListening();
+      } else if (this.state() === 'processing') {
+        this.state.set('idle');
+      }
+      return;
+    }
+
+    this.currentAudio = new Audio('data:audio/mp3;base64,' + base64);
     this.audioRecorder.setMuted(true);
     
-    this.currentAudio.onended = () => { 
+    this.currentAudio.onended = () => {
       this.audioRecorder.setMuted(false);
-      this.isPlayingQueue = false; 
+      this.isPlayingQueue = false;
+      this.currentAudio = null;
+      
+      // Auto-reanudar grabación si está en modo processing
+      if (autoResume && this.state() === 'processing') {
+        this.startListening();
+      } else if (this.state() === 'processing') {
+        this.state.set('idle');
+      }
     };
+
+    this.currentAudio.onerror = (e) => {
+      console.error('Error al decodificar/cargar audio:', e);
+      this.audioRecorder.setMuted(false);
+      this.isPlayingQueue = false;
+      this.currentAudio = null;
+      if (autoResume && this.state() === 'processing') {
+        this.startListening();
+      } else if (this.state() === 'processing') {
+        this.state.set('idle');
+      }
+    };
+    
     this.isPlayingQueue = true;
     this.currentAudio.play().catch(e => {
       this.audioRecorder.setMuted(false);
       console.error('Error audio final:', e);
+      if (autoResume && this.state() === 'processing') {
+        this.startListening();
+      }
     });
   }
 
@@ -330,8 +427,8 @@ export class VoiceTranslator implements OnDestroy {
           grad.addColorStop(0, '#f59e0b');
           grad.addColorStop(1, '#d97706');
         } else if (isActive) {
-          grad.addColorStop(0, '#6366f1');
-          grad.addColorStop(1, '#3b82f6');
+          grad.addColorStop(0, '#3b82f6');
+          grad.addColorStop(1, '#0f4c9c');
         } else {
           grad.addColorStop(0, '#cbd5e1');
           grad.addColorStop(1, '#94a3b8');
@@ -377,7 +474,4 @@ export class VoiceTranslator implements OnDestroy {
   }
 
   ngOnDestroy(): void { this.stopAll(); }
-
-  cerrarSesion(): void { this.router.navigate(['/login']); }
-  verPlanes(): void { this.router.navigate(['/planes']); }
 }

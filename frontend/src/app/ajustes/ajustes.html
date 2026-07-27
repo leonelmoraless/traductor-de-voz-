@@ -1,0 +1,139 @@
+<div class="ajustes-container">
+
+  <div class="ajustes-grid">
+
+    <!-- Columna Izquierda -->
+    <div class="left-col">
+
+      <!-- Perfil de Usuario -->
+      <div class="profile-card">
+        <div class="avatar">
+          <i class="pi pi-user"></i>
+        </div>
+        <div class="profile-info">
+          <h2>{{ user.name }}</h2>
+          <p class="email">{{ user.email }}</p>
+          <button class="plan-badge" (click)="irAPlanes()">
+            <i class="pi pi-crown mr-1"></i>
+            {{ user.plan }} · Mejorar
+          </button>
+        </div>
+      </div>
+
+      <!-- Opciones -->
+      <div class="options-card">
+        <div class="options-header">OPCIONES</div>
+        <div class="options-list">
+
+          <button class="option-item" (click)="irAHistorial()">
+            <div class="option-icon history"><i class="pi pi-history"></i></div>
+            <div class="option-text">
+              <span class="option-title">Historial</span>
+              <span class="option-sub">Ver traducciones anteriores</span>
+            </div>
+            <i class="pi pi-angle-right option-arrow"></i>
+          </button>
+
+          <div class="option-divider"></div>
+
+          <button class="option-item" (click)="irACambiarContrasena()">
+            <div class="option-icon settings"><i class="pi pi-cog"></i></div>
+            <div class="option-text">
+              <span class="option-title">Cambiar contraseña</span>
+              <span class="option-sub">Actualiza tu contraseña de acceso</span>
+            </div>
+            <i class="pi pi-angle-right option-arrow"></i>
+          </button>
+
+          <div class="option-divider"></div>
+
+          <button class="option-item" (click)="irAPlanes()">
+            <div class="option-icon plans"><i class="pi pi-crown"></i></div>
+            <div class="option-text">
+              <span class="option-title">Ver Planes</span>
+              <span class="option-sub">Gestiona tu suscripción</span>
+            </div>
+            <i class="pi pi-angle-right option-arrow"></i>
+          </button>
+
+          <div class="option-divider"></div>
+
+          <button class="option-item danger" (click)="cerrarSesion()">
+            <div class="option-icon logout"><i class="pi pi-sign-out"></i></div>
+            <div class="option-text">
+              <span class="option-title">Cerrar sesión</span>
+              <span class="option-sub">Salir de la aplicación</span>
+            </div>
+            <i class="pi pi-angle-right option-arrow"></i>
+          </button>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Columna Derecha -->
+    <div class="right-col">
+
+      <!-- Calificar la app -->
+      <div class="rating-card">
+        <h3>Califica la aplicación</h3>
+        <div class="rating-row">
+          <div class="stars-display">
+            <i class="pi pi-star-fill star-gold"></i>
+            <i class="pi pi-star-fill star-gold"></i>
+            <i class="pi pi-star-fill star-gold"></i>
+            <i class="pi pi-star-fill star-gold"></i>
+            <i class="pi pi-star-fill star-gold"></i>
+          </div>
+          <button class="review-link" (click)="abrirCalificacion()">Dejar reseña →</button>
+        </div>
+      </div>
+
+      <!-- Versión -->
+      <div class="version-tag">
+        VozTraductor Pro v2.0.0
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Modal Calificar App -->
+<p-dialog
+  [(visible)]="showAppRatingModal"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [showHeader]="false"
+  styleClass="app-rating-dialog"
+  [closeOnEscape]="true"
+  [dismissableMask]="true">
+
+  <div class="app-rating-modal">
+    <h2>Califica la aplicación</h2>
+    <p class="subtitle">Tu opinión nos ayuda a mejorar</p>
+
+    <div class="stars-row">
+      <p-rating [(ngModel)]="appRatingValue" [stars]="5" />
+    </div>
+
+    <div class="comment-box">
+      <textarea pTextarea
+        [(ngModel)]="appRatingComment"
+        placeholder="Cuéntanos más (opcional)..."
+        rows="4"
+        autoResize="false">
+      </textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="cancelarCalificacion()">Cancelar</button>
+      <button class="btn-submit" (click)="enviarCalificacion()">
+        Enviar valoración
+      </button>
+    </div>
+  </div>
+</p-dialog>
