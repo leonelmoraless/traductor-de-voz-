@@ -81,6 +81,23 @@ export class WebsocketTranslatorService {
   }
 
   /**
+   * Envía la grabación final al servidor para traducción bidireccional vía Whisper.
+   */
+  sendEndUtterance(blob: Blob): void {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = () => {
+      const base64data = reader.result as string;
+      const base64String = base64data.split(',')[1];
+      
+      this.send({
+        type: 'end_utterance',
+        data: base64String
+      });
+    };
+  }
+
+  /**
    * Avisa al servidor que el usuario dejó de hablar, enviando el texto reconocido.
    */
   sendTextUtterance(text: string): void {

@@ -41,8 +41,8 @@ export class AudioRecorderService {
   // ─── Configuración ─────────────────────────────────────────────────────────
   /** Umbral RMS (0.015 = equilibrio perfecto entre sensibilidad y rechazo de ruido) */
   private readonly SILENCE_THRESHOLD   = 0.015;
-  /** Tiempo de silencio tras voz que dispara el fin de frase (500ms = muy rápido) */
-  private readonly SILENCE_DURATION_MS = 500;
+  /** Tiempo de silencio tras voz que dispara el fin de frase (2000ms) */
+  private readonly SILENCE_DURATION_MS = 2000;
 
   public isMuted = false;
 

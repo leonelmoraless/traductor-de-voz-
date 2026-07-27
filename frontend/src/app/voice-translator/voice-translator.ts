@@ -12,6 +12,8 @@ import { RatingModule } from 'primeng/rating';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 
 import { AudioRecorderService } from './services/audio-recorder.service';
 import { WebsocketTranslatorService } from './services/websocket-translator.service';
@@ -22,8 +24,10 @@ import { RecordingState, WsMessage, Language } from './models/translation-result
   imports: [
     CommonModule, FormsModule,
     ButtonModule, CardModule, TagModule, SelectModule,
-    ProgressSpinnerModule, RatingModule, DialogModule, InputTextModule
+    ProgressSpinnerModule, RatingModule, DialogModule, InputTextModule,
+    ToastModule
   ],
+  providers: [MessageService],
   templateUrl: './voice-translator.html',
   styleUrl: './voice-translator.scss',
 })
@@ -34,6 +38,7 @@ export class VoiceTranslator implements OnDestroy {
   private audioRecorder = inject(AudioRecorderService);
   private wsTranslator  = inject(WebsocketTranslatorService);
   private ngZone        = inject(NgZone);
+  private messageService = inject(MessageService);
 
   // ─── Estado reactivo ───────────────────────────────────────────────────────
   readonly state         = signal<RecordingState>('idle');
@@ -132,10 +137,20 @@ export class VoiceTranslator implements OnDestroy {
   }
 
   openLangModal(side: 'source' | 'target'): void {
-    if (!this.isIdle()) return;
-    this.modalSide = side;
-    this.searchQuery = '';
-    this.showLangModal = true;
+    if (this.isIdle()) {
+      this.modalSide = side;
+      this.searchQuery = '';
+      this.showLangModal = true;
+    }
+  }
+
+  swapLanguages(): void {
+    if (this.isIdle()) {
+      const temp = this.sourceLang;
+      this.sourceLang = this.targetLang;
+      this.targetLang = temp;
+      this.onConfigChange();
+    }
   }
 
   selectLanguage(lang: Language): void {
@@ -165,6 +180,10 @@ export class VoiceTranslator implements OnDestroy {
   private async startListening(): Promise<void> {
     this.resetResults();
     this.state.set('listening');
+
+    this.subs.forEach(sub => sub.unsubscribe());
+    this.subs = [];
+    this._stopWaveAnimation();
 
     try {
       this.wsTranslator.connect();
@@ -262,23 +281,21 @@ export class VoiceTranslator implements OnDestroy {
             break;
 
           case 'no_speech':
-            this.errorMessage.set(msg.message);
+            this.messageService.add({ severity: 'info', summary: 'Aviso', detail: msg.message, life: 3000 });
             if (this.state() === 'processing') {
               this.startListening();
             } else {
               this.state.set('idle');
             }
-            setTimeout(() => this.errorMessage.set(''), 4000);
             break;
 
           case 'error':
-            this.errorMessage.set(msg.message ?? 'Error desconocido.');
+            this.messageService.add({ severity: 'error', summary: 'Error', detail: msg.message ?? 'Error desconocido.', life: 4000 });
             if (this.state() === 'processing') {
               this.startListening();
             } else {
               this.state.set('idle');
             }
-            setTimeout(() => this.errorMessage.set(''), 5000);
             break;
         }
       })
@@ -334,6 +351,7 @@ export class VoiceTranslator implements OnDestroy {
     }
 
     this.currentAudio = new Audio('data:audio/mp3;base64,' + base64);
+    this.currentAudio.playbackRate = 1.35;
     this.audioRecorder.setMuted(true);
     
     this.currentAudio.onended = () => {

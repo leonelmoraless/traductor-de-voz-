@@ -8,7 +8,6 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import WebSocket, WebSocketDisconnect
-from deep_translator import GoogleTranslator
 
 from services.transcription import transcribe
 from services.translation import translate
@@ -16,9 +15,11 @@ from services.tts import synthesize
 
 _executor = ThreadPoolExecutor(max_workers=5)
 
-async def _run_in_thread(fn, *args, **kwargs):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_executor, lambda: fn(*args, **kwargs))
+async def _run_in_thread(fn, *args, timeout=15.0, **kwargs):
+    """Ejecuta una función síncrona con un límite de tiempo para evitar bloqueos."""
+    loop = asyncio.get_running_loop()
+    future = loop.run_in_executor(_executor, lambda: fn(*args, **kwargs))
+    return await asyncio.wait_for(future, timeout=timeout)
 
 async def _safe_send(websocket: WebSocket, payload: dict, closed_flag: list) -> None:
     """Envía un mensaje JSON solo si la conexión sigue abierta."""
@@ -69,6 +70,8 @@ async def handle_ws_session(websocket: WebSocket) -> None:
                         "source_lang":   detected_lang,
                         "target_lang":   target_lang,
                     }, closed)
+            except asyncio.TimeoutError:
+                pass
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -102,8 +105,9 @@ async def handle_ws_session(websocket: WebSocket) -> None:
                 if text_to_translate.strip():
                     try:
                         print(f"[WS] translate_text recibido: {text_to_translate!r}")
+                        # Usamos nuestra función translate que ya tiene reintentos y caché
                         traduccion = await _run_in_thread(
-                            GoogleTranslator(source=lang1, target=lang2).translate, text_to_translate
+                            translate, text_to_translate, lang1, lang2
                         )
                         await _safe_send(websocket, {
                             "type": "partial_translation_result",
@@ -118,7 +122,7 @@ async def handle_ws_session(websocket: WebSocket) -> None:
                     try:
                         print(f"[WS] translate_and_speak_chunk recibido: {chunk!r}")
                         traduccion = await _run_in_thread(
-                            GoogleTranslator(source=lang1, target=lang2).translate, chunk
+                            translate, chunk, lang1, lang2
                         )
                         audio_b64 = await _run_in_thread(synthesize, traduccion, lang2)
                         await _safe_send(websocket, {
@@ -127,6 +131,18 @@ async def handle_ws_session(websocket: WebSocket) -> None:
                         }, closed)
                     except Exception as e:
                         print(f"[WS] Error en TTS simultáneo: {e}")
+
+            elif msg_type == "text_utterance":
+                print("[WS] Mensaje text_utterance recibido")
+                text_to_process = message.get("text", "").strip()
+                
+                asyncio.create_task(
+                    _process_text_final(
+                        websocket, text_to_process,
+                        lang1, lang2,
+                        processing_lock, closed
+                    )
+                )
 
             elif msg_type == "end_utterance":
                 print("[WS] Mensaje end_utterance recibido")
@@ -145,6 +161,8 @@ async def handle_ws_session(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         closed[0] = True
         print("[WS] Sesión cerrada por el cliente")
+    except asyncio.CancelledError:
+        closed[0] = True
     except Exception as exc:
         closed[0] = True
         print(f"[WS] Error inesperado en sesión: {exc}")
@@ -200,6 +218,74 @@ async def _process_final(
 
         except ValueError:
             await _safe_send(websocket, {"type": "no_speech", "message": "No se detectó voz válida."}, closed)
+        except asyncio.TimeoutError:
+            await _safe_send(websocket, {"type": "error", "message": "El proceso tardó demasiado. Por favor, intenta de nuevo."}, closed)
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             print(f"[WS Final] Error: {exc}")
-            await _safe_send(websocket, {"type": "error", "message": "Error procesando el audio final."}, closed)
+            await _safe_send(websocket, {"type": "error", "message": "Error procesando la traducción o el audio."}, closed)
+
+
+async def _process_text_final(
+    websocket: WebSocket,
+    text: str,
+    lang1: str,
+    lang2: str,
+    lock: asyncio.Lock,
+    closed: list,
+) -> None:
+    """Procesa una transcripción final proveniente directamente del texto (ej. SpeechRecognition del navegador)."""
+    async with lock:
+        if closed[0]:
+            return
+
+        try:
+            print(f"[WS Final Text] Texto recibido: {text!r}")
+
+            if not text or not re.search(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜäöüßÄÖÜ]', text):
+                await _safe_send(websocket, {
+                    "type": "no_speech",
+                    "message": "No se entendió o detectó contenido útil. ¿Puedes repetirlo?"
+                }, closed)
+                return
+
+            from services.translation import detect_language
+            detected = await _run_in_thread(detect_language, text, timeout=5.0)
+
+            detected_lang = lang1
+            target_lang = lang2
+
+            if detected:
+                # Extraer prefijo (ej. 'en' de 'en-US')
+                l1_prefix = lang1.split('-')[0]
+                l2_prefix = lang2.split('-')[0]
+                
+                if detected.startswith(l2_prefix):
+                    detected_lang = lang2
+                    target_lang = lang1
+                elif detected.startswith(l1_prefix):
+                    detected_lang = lang1
+                    target_lang = lang2
+
+            traduccion = await _run_in_thread(translate, text, detected_lang, target_lang)
+            print(f"[WS Final Text] Traducción: {traduccion!r}")
+
+            audio_b64 = await _run_in_thread(synthesize, traduccion, target_lang)
+
+            await _safe_send(websocket, {
+                "type":          "translation_result",
+                "transcripcion": text,
+                "traduccion":    traduccion,
+                "source_lang":   detected_lang,
+                "target_lang":   target_lang,
+                "audio_base64":  audio_b64,
+            }, closed)
+
+        except asyncio.TimeoutError:
+            await _safe_send(websocket, {"type": "error", "message": "El proceso tardó demasiado. Por favor, intenta de nuevo."}, closed)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            print(f"[WS Final Text] Error: {exc}")
+            await _safe_send(websocket, {"type": "error", "message": "Error procesando la traducción o el audio final."}, closed)

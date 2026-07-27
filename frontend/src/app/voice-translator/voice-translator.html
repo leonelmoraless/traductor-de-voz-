@@ -1,4 +1,5 @@
 <div class="translator-wrapper">
+  <p-toast position="top-right"></p-toast>
 
   <!-- ─── LANGUAGE SELECTOR (Custom con Modal) ────────────────────────────── -->
   <div class="language-bar-container">
@@ -10,8 +11,8 @@
         <i class="pi pi-angle-down ml-1"></i>
       </button>
 
-      <!-- Flecha bidireccional estática (deshabilitada) -->
-      <button class="icon-btn static-arrow" title="Traducción bidireccional">
+      <!-- Flecha bidireccional (swap) -->
+      <button class="icon-btn static-arrow" title="Intercambiar idiomas" (click)="swapLanguages()" [disabled]="!isIdle()">
         <i class="pi pi-arrow-right-arrow-left"></i>
       </button>
 
@@ -63,23 +64,6 @@
       </div>
     }
   </div>
-
-  <!-- ─── ERROR / WARNING BANNER ───────────────────────────────────────── -->
-  @if (errorMessage() && !isError()) {
-    <div class="warning-banner fade-in">
-      <i class="pi pi-info-circle"></i>
-      <span>{{ errorMessage() }}</span>
-    </div>
-  }
-
-  @if (isError()) {
-    <div class="error-banner fade-in">
-      <i class="pi pi-exclamation-triangle"></i>
-      <span>{{ errorMessage() }}</span>
-      <p-button label="Reintentar" icon="pi pi-refresh" severity="danger"
-        size="small" [outlined]="true" (onClick)="toggleRecording()" />
-    </div>
-  }
 
   <!-- ─── TEXT PANELS (Diseño Original Horizontal) ─────────────────────── -->
   <div class="panels-row">
